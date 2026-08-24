@@ -68,6 +68,12 @@
           "url": "https://developer.apple.com/swiftui",
           "iconKey": "box",
           "color": "#0A84FF"
+        },
+        {
+          "name": "Uiverse",
+          "url": "https://uiverse.io",
+          "iconKey": "layers",
+          "color": "#A855F7"
         }
       ]
     },
@@ -120,6 +126,75 @@
           "name": "Rive",
           "url": "https://rive.app",
           "iconKey": "bot",
+          "color": "#8B5CF6"
+        }
+      ]
+    },
+    {
+      "name": "colors",
+      "entries": [
+        {
+          "name": "Realtime Colors",
+          "url": "https://realtimecolors.com",
+          "iconKey": "pen",
+          "color": "#6366F1"
+        },
+        {
+          "name": "Coolors",
+          "url": "https://coolors.co",
+          "iconKey": "sparkles",
+          "color": "#F43F5E"
+        },
+        {
+          "name": "Color Hunt",
+          "url": "https://colorhunt.co",
+          "iconKey": "search",
+          "color": "#E8455C"
+        }
+      ]
+    },
+    {
+      "name": "typography",
+      "entries": [
+        {
+          "name": "Fontshare",
+          "url": "https://fontshare.com",
+          "iconKey": "file-text",
+          "color": "#111827"
+        },
+        {
+          "name": "Bunny Fonts",
+          "url": "https://bunny.net/fonts",
+          "iconKey": "book-open",
+          "color": "#F97316"
+        },
+        {
+          "name": "Google Fonts",
+          "url": "https://fonts.google.com",
+          "iconKey": "search",
+          "color": "#4285F4"
+        }
+      ]
+    },
+    {
+      "name": "animation",
+      "entries": [
+        {
+          "name": "Motion",
+          "url": "https://motion.dev",
+          "iconKey": "zap",
+          "color": "#E5484D"
+        },
+        {
+          "name": "GSAP",
+          "url": "https://gsap.com",
+          "iconKey": "activity",
+          "color": "#0FA958"
+        },
+        {
+          "name": "Animista",
+          "url": "https://animista.net",
+          "iconKey": "film",
           "color": "#8B5CF6"
         }
       ]
@@ -180,6 +255,24 @@
           "url": "https://www.darkmodedesign.com",
           "iconKey": "pen",
           "color": "#64748B"
+        },
+        {
+          "name": "Awwwards",
+          "url": "https://awwwards.com",
+          "iconKey": "globe",
+          "color": "#111827"
+        },
+        {
+          "name": "Minimal Gallery",
+          "url": "https://minimal.gallery",
+          "iconKey": "images",
+          "color": "#0EA5E9"
+        },
+        {
+          "name": "SaaS Landing Page",
+          "url": "https://saaslandingpage.com",
+          "iconKey": "cloud",
+          "color": "#10B981"
         }
       ]
     }
