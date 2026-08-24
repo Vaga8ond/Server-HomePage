@@ -62,6 +62,65 @@
           "url": "https://hyperui.dev",
           "iconKey": "terminal",
           "color": "#14B8A6"
+        },
+        {
+          "name": "SwiftUI",
+          "url": "https://developer.apple.com/swiftui",
+          "iconKey": "box",
+          "color": "#0A84FF"
+        }
+      ]
+    },
+    {
+      "name": "icons",
+      "entries": [
+        {
+          "name": "Morph Icons",
+          "url": "https://www.morphicons.com/",
+          "iconKey": "sparkles",
+          "color": "#8B5CF6"
+        },
+        {
+          "name": "Lucide",
+          "url": "https://lucide.dev",
+          "iconKey": "pen",
+          "color": "#38BDF8"
+        },
+        {
+          "name": "Phosphor",
+          "url": "https://phosphoricons.com",
+          "iconKey": "layers",
+          "color": "#F43F5E"
+        },
+        {
+          "name": "Tabler",
+          "url": "https://tabler.io/icons",
+          "iconKey": "box",
+          "color": "#4F46E5"
+        },
+        {
+          "name": "Iconify",
+          "url": "https://iconify.design",
+          "iconKey": "search",
+          "color": "#2563EB"
+        },
+        {
+          "name": "Supericons",
+          "url": "https://supericons.dev",
+          "iconKey": "activity",
+          "color": "#EF4444"
+        },
+        {
+          "name": "Heroicons",
+          "url": "https://heroicons.com",
+          "iconKey": "shield",
+          "color": "#06B6D4"
+        },
+        {
+          "name": "Rive",
+          "url": "https://rive.app",
+          "iconKey": "bot",
+          "color": "#8B5CF6"
         }
       ]
     },
