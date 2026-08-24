@@ -5,11 +5,19 @@ import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 
 import { readServices } from "./config"
-import { containerLogs, containerStateMap, controlContainer, listContainers } from "./docker"
+import {
+  containerLogs,
+  containerStateMap,
+  controlContainer,
+  discoverServices,
+  listContainers,
+} from "./docker"
 import { queryAggregate, querySeries, type HistoryWindow } from "./history"
 import { getSnapshot, startSampler } from "./metrics"
 import { probeAll } from "./probe"
 import { startRecorder } from "./recorder"
+import { defaultInterface, listInterfaces } from "./network"
+import { listMounts } from "./storage"
 import type { ContainerAction } from "./types"
 
 startSampler()
@@ -40,12 +48,16 @@ app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }))
 app.get("/api/host", (c) => c.json(getSnapshot()))
 
 app.get("/api/services", async (c) => {
-  const [services, states] = await Promise.all([
-    probeAll(readServices()),
+  const manual = readServices()
+  // Manual entries first (they carry the curated metadata); docker-discovered
+  // services follow, deduped against the manual catalog.
+  const services = [...manual, ...(await discoverServices(manual))]
+  const [probed, states] = await Promise.all([
+    probeAll(services),
     containerStateMap(),
   ])
   return c.json(
-    services.map((service) => ({
+    probed.map((service) => ({
       ...service,
       containerState: service.container
         ? (states.get(service.container) ?? null)
@@ -65,6 +77,12 @@ app.get("/api/history", (c) => {
 })
 
 app.get("/api/history/aggregate", (c) => c.json(queryAggregate()))
+
+app.get("/api/storage", (c) => c.json({ mounts: listMounts() }))
+
+app.get("/api/network", (c) =>
+  c.json({ defaultInterface: defaultInterface(), interfaces: listInterfaces() }),
+)
 
 app.get("/api/containers/:name/logs", async (c) => {
   const name = c.req.param("name")

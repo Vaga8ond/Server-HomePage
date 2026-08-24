@@ -1,6 +1,6 @@
 import Docker from "dockerode"
 
-import type { ContainerAction, ContainerInfo } from "./types"
+import type { ContainerAction, ContainerInfo, ServiceConfig } from "./types"
 
 let docker: Docker | null = null
 
@@ -88,6 +88,66 @@ export async function containerStateMap(): Promise<Map<string, string>> {
   const map = new Map<string, string>()
   for (const c of containers) map.set(c.name, c.state)
   return map
+}
+
+// Same hint table as the frontend's imageToIconKey — kept in sync by hand.
+// ponytail: duplicated mapping; extract to a shared module if it drifts.
+const IMAGE_HINTS: [RegExp, string][] = [
+  [/immich|photo|plex|jellyfin|emby|navidrome/, "images"],
+  [/postgres|mysql|mariadb|mongo/, "database"],
+  [/redis|valkey|memcach/, "zap"],
+  [/nginx|traefik|caddy/, "globe"],
+  [/prometheus|grafana|zabbix/, "gauge"],
+  [/git|gitea|forgejo/, "git"],
+  [/qemu|kvm|pve|proxmox/, "cpu"],
+  [/torrent|transmission|qbit/, "download"],
+  [/node|bun|deno/, "code"],
+  [/python|pip/, "terminal"],
+  [/api|gateway/, "link"],
+]
+
+const AUTO_COLORS = ["#00E5FF", "#A855F7", "#22C55E", "#F59E0B", "#3B82F6"]
+
+/** Auto-discovered services: running containers with a published port.
+ *  Derived fresh from docker on every call — new deployments show up on the
+ *  dashboard without touching services.json. Manual entries (matched by
+ *  container name or port) win and provide the nicer metadata. */
+export async function discoverServices(
+  manual: { container?: string; port: number }[],
+): Promise<ServiceConfig[]> {
+  const containers = await listContainers()
+  const takenContainers = new Set(manual.map((m) => m.container).filter(Boolean))
+  const takenPorts = new Set(manual.map((m) => m.port))
+
+  const out: ServiceConfig[] = []
+  for (const c of containers) {
+    if (c.state !== "running") continue
+    const tcp = c.ports
+      .map((p) => Number(p.split("/")[0]))
+      .filter((p) => Number.isFinite(p) && p > 0)
+    const port = tcp[0]
+    if (port == null) continue
+    if (takenContainers.has(c.name) || takenPorts.has(port)) continue
+
+    let iconKey = "container"
+    const image = c.image.toLowerCase()
+    for (const [re, key] of IMAGE_HINTS) if (re.test(image)) { iconKey = key; break }
+
+    let hash = 0
+    for (const ch of c.name) hash = (hash * 31 + ch.charCodeAt(0)) | 0
+
+    out.push({
+      id: `auto:${c.name}`,
+      name: c.name,
+      category: "docker",
+      iconKey,
+      color: AUTO_COLORS[Math.abs(hash) % AUTO_COLORS.length],
+      port,
+      scheme: "http",
+      container: c.name,
+    })
+  }
+  return out
 }
 
 export async function controlContainer(

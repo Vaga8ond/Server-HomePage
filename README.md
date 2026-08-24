@@ -1,85 +1,85 @@
-# HomeBase · Server Homepage
+# HomeBase · Self-hosted Server Homepage
 
-自托管服务器仪表盘：单容器（Node/Hono 后端 + React 前端），实时主机指标、服务健康探测、Docker 容器控制与日志、历史图表（自建记录器，无 Prometheus 依赖）。
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-## 界面
+[![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Hono](https://img.shields.io/badge/Hono-FF6A33?style=for-the-badge)](https://hono.dev)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-### Overview — 主机总览
+## What is this
 
-KPI 卡（Network I/O / CPU / Memory / Uptime，带 24h 迷你趋势与环比）、磁盘用量、网络流量面积图（1H/6H/24H/7D）、每周流量与 7 天 × 24 小时热力图：
+A glassmorphism server homepage for your homelab: one page that answers "is everything up, and is the box healthy". The Hono backend reads the real host through `/proc` / `/sys` / sysfs (with macOS fallbacks for dev), samples every second, keeps 30 days of JSONL history, probes every service, and talks to the Docker socket — the React frontend just renders what it's told. No agent to install, no database, no config file required.
 
-![Overview](docs/overview.jpg)
+| Overview · KPI + charts | Services · auto-discovered |
+| --- | --- |
+| ![overview](docs/shot/01-overview.png) | ![services](docs/shot/02-services.png) |
+| **Monitoring · containers** | **Storage · mounts** |
+| ![monitoring](docs/shot/03-monitoring.png) | ![storage](docs/shot/04-storage.png) |
+| **Network · interfaces** | **Logs · stream** |
+| ![network](docs/shot/05-network.png) | ![logs](docs/shot/06-logs.png) |
+| **Design · resources** | |
+| ![design](docs/shot/07-design.png) | |
 
-### Services — 服务目录
+## Features
 
-每服务一张卡：健康探测延迟、容器启停（Start/Stop/Restart）。卡片链接按「打开看板用的地址 + 端口」自动生成，IP/域名/mDNS 访问无需配置：
+- **Zero-config service catalog** — running Docker containers with published ports are discovered automatically (icon and color inferred from the image name); manual entries in `backend/config/services.json` win over discovery and carry curated metadata.
+- **Real host metrics** — CPU / memory / load / TCP / uptime / net counters sampled every second from PID 1's `/proc` (host netns), with Darwin fallbacks (`vm_stat`, `ps`, `netstat`, `sysctl`) so the same code runs on a Mac.
+- **30-day history** — metrics recorded as daily JSONL files, downsampled per window (1h / 6h / 24h / 7d, ~300 buckets each) powering sparklines, the traffic area chart, weekly bars and a GitHub-style heatmap.
+- **Container control** — live CPU / memory per container, log streaming with level parsing and filters, start / stop / restart buttons wired straight to the Docker socket.
+- **Storage & network views** — real filesystem mounts via `statfs` (virtual FS filtered), interfaces with link state, speed, addresses and boot-cumulative traffic.
+- **The details** — dark/light themes, hash routing (deep links survive refresh), 250ms view transitions, charts that follow the theme, `prefers-reduced-motion` respected.
 
-![Services](docs/services.jpg)
-
-### Monitoring — 容器监控
-
-全量 Docker 容器卡片：状态徽标、CPU/内存迷你仪表、日志查看（最近 200 行）、启停控制：
-
-![Monitoring](docs/monitoring.jpg)
-
-## 部署
-
-```bash
-git clone git@github.com:UNborracho/Server-HomePage.git
-cd Server-HomePage
-docker compose up -d --build   # → http://<server-ip>:8088
-```
-
-容器挂载 `/proc` `/sys` `/`（只读）读宿主指标，挂载 docker.sock 做容器控制。国内网络默认走镜像加速；海外机器：
-
-```bash
-docker build --build-arg NODE_IMAGE=node:22-alpine \
-  --build-arg NPM_REGISTRY=https://registry.npmjs.org \
-  --build-arg APK_MIRROR=https://dl-cdn.alpinelinux.org .
-```
-
-可选环境变量（compose 里改）：`TZ`（默认 `Asia/Shanghai`）、`PORT`（默认 8088）。
-
-## 服务目录（`backend/config/services.json`）
-
-每台服务器一份，**挂载卷，改完即生效**（最迟 ~10s 出现在页面上），部署不会覆盖：
-
-```json
-{
-  "id": "immich",
-  "name": "Immich",
-  "category": "Media",
-  "iconKey": "images",
-  "color": "#3B82F6",
-  "port": 2283,
-  "scheme": "http",
-  "container": "immich_server",
-  "url": "http://other-host:8080"
-}
-```
-
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `id` / `name` / `category` / `port` | ✅ | `category` 同时是侧边栏分组 |
-| `iconKey` | — | 图标，见下表；未知值回退容器图标 |
-| `color` | — | 卡片主题色 `#RRGGBB` |
-| `scheme` | — | `http`（默认）/ `https` |
-| `container` | — | Docker 容器名；配了才有启停按钮 |
-| `url` | — | 显式覆盖链接+探活地址（默认 `scheme://本机:port`，前端按打开看板用的地址自动推导） |
-
-浏览器里的卡片链接按「你打开看板用的地址 + port」自动生成——局域网 IP、域名访问自动适配，无需配置。
-
-**iconKey 可选值**：`images` `image` `film` `video` `music` `camera` `book-open` `gamepad` `file-text` `pen` `notebook` `container` `server` `database` `hard-drive` `cloud` `cpu` `layers` `box` `gauge` `activity` `zap` `globe` `link` `download` `rss` `search` `mail` `message-circle` `bell` `code` `git` `terminal` `shield` `key` `lock` `sparkles` `kanban` `bot` `settings` `users` `calendar` `cart` `wallet`
-
-**容错**：JSON 写坏 / 条目缺 `name`/`port` 时，后端继续用「最后一次正确目录」服务（丢掉的条目记入容器日志），不会 500。
-
-## 开发
+## Quick start
 
 ```bash
-# 前端 :5173（/api 代理到 :8787）
+# backend (API on :8787)
+cd backend && npm install
 npm run dev
-# 后端 :8787（Mac 上无 /proc，指标多为空属正常）
-cd backend && PROBE_HOST=127.0.0.1 npm run dev
+
+# frontend (Vite on :5173, proxies /api → :8787)
+npm install
+npm run dev
 ```
 
-改动 → 服务器部署：`./deploy.sh`（rsync + 重建；自动保护服务器上的 `backend/config/` 与 `data/`）。历史数据在 `./data`（JSONL，15s 采样，30 天保留）。
+Deploy the prebuilt image (serves the API and the static SPA on one port):
+
+```bash
+docker run -d --name homebase \
+  -p 8787:8787 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /proc:/host/proc:ro \
+  -v /sys:/host/sys:ro \
+  -e HOST_PROC=/host/proc -e HOST_SYS=/host/sys \
+  ghcr.io/unborracho/homebase:latest
+```
+
+Reads plain `/proc` and `/sys` when running on the host — mount them only inside a container. Node ≥ 22.
+
+## Structure
+
+```
+backend/src/
+  index.ts    # Hono routes + SPA fallback
+  metrics.ts  # 1s host sampler (Linux /proc//sys, Darwin fallbacks)
+  history.ts  # JSONL history, per-window downsampling
+  recorder.ts # writes metrics to data/hist-YYYY-MM-DD
+  docker.ts   # container list/state/logs/actions + auto-discovery
+  probe.ts    # service HTTP probes (5s cache, 3s timeout)
+  storage.ts  # real mounts via statfs, virtual FS filtered
+  network.ts  # interfaces, counters, default route
+  config.ts   # services.json catalog (SERVICES_CONFIG overrides)
+src/
+  App.tsx     # hash-routed views, 250ms view-enter transition
+  components/dashboard/   # one view per route + shared cards
+  components/dashboard/charts/  # recharts wrappers, theme-aware
+  lib/        # api fetchers, usePoll, formatters, icons
+public/design-resources.json   # Design page link catalog (edit, don't code)
+```
+
+Key knobs: `PORT`, `HOST_PROC` / `HOST_SYS` / `HOST_FS` (host mounts in-container), `PROBE_HOST` (defaults `host.docker.internal`; use `127.0.0.1` for local dev), `DATA_DIR`, `SERVICES_CONFIG`.
+
+## License
+
+MIT.

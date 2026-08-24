@@ -80,6 +80,25 @@ export interface HistoryAggregate {
   maxMbps: number
 }
 
+export interface StorageMount {
+  device: string
+  mount: string
+  fstype: string
+  total: number
+  used: number
+  free: number
+  percent: number
+}
+
+export interface NetInterface {
+  name: string
+  state: string
+  speedMbps: number | null
+  addresses: string[]
+  rxBytes: number | null
+  txBytes: number | null
+}
+
 const API = "/api"
 
 export async function fetchHost(): Promise<HostMetrics> {
@@ -120,6 +139,24 @@ export async function fetchHistoryAggregate(): Promise<HistoryAggregate> {
   const res = await fetch(`${API}/history/aggregate`)
   if (!res.ok) throw new Error(`history aggregate ${res.status}`)
   return (await res.json()) as HistoryAggregate
+}
+
+export async function fetchStorage(): Promise<{ mounts: StorageMount[] }> {
+  const res = await fetch(`${API}/storage`)
+  if (!res.ok) throw new Error(`storage ${res.status}`)
+  return (await res.json()) as { mounts: StorageMount[] }
+}
+
+export async function fetchNetwork(): Promise<{
+  defaultInterface: string | null
+  interfaces: NetInterface[]
+}> {
+  const res = await fetch(`${API}/network`)
+  if (!res.ok) throw new Error(`network ${res.status}`)
+  return (await res.json()) as {
+    defaultInterface: string | null
+    interfaces: NetInterface[]
+  }
 }
 
 export async function fetchContainerLogs(name: string): Promise<string> {

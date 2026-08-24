@@ -1,18 +1,17 @@
+import { Palette } from "lucide-react"
+
 import { NAV_ITEMS } from "@/lib/data"
-import { fetchHost, type ApiService } from "@/lib/api"
+import { fetchHost } from "@/lib/api"
 import { usePoll } from "@/lib/use-poll"
 import { cn } from "@/lib/utils"
 
 export function Sidebar({
-  services,
   activeNav,
   onNavChange,
 }: {
-  services: ApiService[]
   activeNav: string
   onNavChange: (id: string) => void
 }) {
-  const categories = Array.from(new Set(services.map((s) => s.category)))
   // Slow poll just for the host identity shown in the footer.
   const { data: host } = usePoll(fetchHost, 30_000)
   const hostname = host?.hostInfo?.hostname ?? "connecting…"
@@ -51,28 +50,16 @@ export function Sidebar({
           )
         })}
 
-        {categories.length > 0 && (
-          <>
-            <div className="mb-2 mt-5 px-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
-              Services
-            </div>
-            {categories.map((cat) => {
-              const inCat = services.filter((s) => s.category === cat)
-              const hasError = inCat.some((s) => s.status === "error")
-              const hasStop = inCat.some((s) => s.status === "stopped")
-              const dot = hasError ? "#EF4444" : hasStop ? "#6B7280" : "#22C55E"
-              return (
-                <div key={cat} className="nav-item justify-between">
-                  <span>{cat}</span>
-                  <span
-                    className="inline-block size-[7px] rounded-full"
-                    style={{ background: dot }}
-                  />
-                </div>
-              )
-            })}
-          </>
-        )}
+        <div className="mb-2 mt-5 px-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-faint">
+          Resources
+        </div>
+        <div
+          className={cn("nav-item", activeNav === "design" && "active")}
+          onClick={() => onNavChange("design")}
+        >
+          <Palette className="size-[14px]" />
+          Design
+        </div>
       </nav>
 
       {/* User footer */}

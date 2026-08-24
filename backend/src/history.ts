@@ -38,8 +38,6 @@ export interface HistoryPoint {
   temp: number | null
 }
 
-interface RawPoint extends HistoryPoint {}
-
 function dayKey(ms: number): string {
   const d = new Date(ms)
   const p = (n: number) => String(n).padStart(2, "0")
@@ -47,7 +45,7 @@ function dayKey(ms: number): string {
 }
 
 /** Yields all recorded points with t >= fromMs, oldest first. */
-function* readRange(fromMs: number): Generator<RawPoint> {
+function* readRange(fromMs: number): Generator<HistoryPoint> {
   let files: string[] = []
   try {
     files = readdirSync(DATA_DIR)
@@ -69,7 +67,7 @@ function* readRange(fromMs: number): Generator<RawPoint> {
     for (const line of text.split("\n")) {
       if (!line) continue
       try {
-        const p = JSON.parse(line) as RawPoint
+        const p = JSON.parse(line) as HistoryPoint
         if (typeof p.t === "number" && p.t >= fromMs) yield p
       } catch {
         /* skip corrupt line */

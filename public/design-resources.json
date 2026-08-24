@@ -1,0 +1,128 @@
+{
+  "categories": [
+    {
+      "name": "components",
+      "entries": [
+        {
+          "name": "Astro",
+          "url": "https://astro.build",
+          "iconKey": "globe",
+          "color": "#FF5D01"
+        },
+        {
+          "name": "shadcn/ui",
+          "url": "https://ui.shadcn.com/",
+          "iconKey": "code",
+          "color": "#7C3AED"
+        },
+        {
+          "name": "React Bits",
+          "url": "https://reactbits.dev",
+          "iconKey": "sparkles",
+          "color": "#22C55E"
+        },
+        {
+          "name": "daisyUI",
+          "url": "https://daisyui.com/components/dropdown/",
+          "iconKey": "kanban",
+          "color": "#5A25C8"
+        },
+        {
+          "name": "Origin UI",
+          "url": "https://originui.com",
+          "iconKey": "layers",
+          "color": "#F97316"
+        },
+        {
+          "name": "Magic UI",
+          "url": "https://magicui.design",
+          "iconKey": "sparkles",
+          "color": "#8B5CF6"
+        },
+        {
+          "name": "Aceternity UI",
+          "url": "https://ui.aceternity.com",
+          "iconKey": "zap",
+          "color": "#22D3EE"
+        },
+        {
+          "name": "HeroUI",
+          "url": "https://heroui.com",
+          "iconKey": "box",
+          "color": "#6366F1"
+        },
+        {
+          "name": "Radix UI",
+          "url": "https://www.radix-ui.com/primitives",
+          "iconKey": "cpu",
+          "color": "#F43F5E"
+        },
+        {
+          "name": "HyperUI",
+          "url": "https://hyperui.dev",
+          "iconKey": "terminal",
+          "color": "#14B8A6"
+        }
+      ]
+    },
+    {
+      "name": "inspiration",
+      "entries": [
+        {
+          "name": "Admire The Web",
+          "url": "https://admiretheweb.com",
+          "iconKey": "images",
+          "color": "#00E5FF"
+        },
+        {
+          "name": "Craftwork",
+          "url": "https://craftwork.design/curated/websites",
+          "iconKey": "git",
+          "color": "#F59E0B"
+        },
+        {
+          "name": "Vibe Hub",
+          "url": "https://vibe-hub.org",
+          "iconKey": "bot",
+          "color": "#A855F7"
+        },
+        {
+          "name": "Godly",
+          "url": "https://godly.website",
+          "iconKey": "globe",
+          "color": "#F59E0B"
+        },
+        {
+          "name": "Land-book",
+          "url": "https://land-book.com",
+          "iconKey": "book-open",
+          "color": "#22C55E"
+        },
+        {
+          "name": "Lapa Ninja",
+          "url": "https://lapa.ninja",
+          "iconKey": "search",
+          "color": "#A855F7"
+        },
+        {
+          "name": "Refero",
+          "url": "https://refero.design",
+          "iconKey": "activity",
+          "color": "#00E5FF"
+        },
+        {
+          "name": "Mobbin",
+          "url": "https://mobbin.com",
+          "iconKey": "users",
+          "color": "#F97316"
+        },
+        {
+          "name": "Dark Mode Design",
+          "url": "https://www.darkmodedesign.com",
+          "iconKey": "pen",
+          "color": "#64748B"
+        }
+      ]
+    }
+  ]
+}

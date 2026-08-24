@@ -1,11 +1,25 @@
+import { execSync } from "node:child_process"
 import { readdirSync, readFileSync, statfsSync } from "node:fs"
+import {
+  hostname as osHostname,
+  loadavg,
+  cpus,
+  totalmem,
+  type as osType,
+  release as osRelease,
+} from "node:os"
 import { join } from "node:path"
 
+import {
+  defaultInterface as defaultIfaceName,
+  listInterfaces,
+} from "./network"
 import type { HostMetrics } from "./types"
 
 const PROC = process.env.HOST_PROC ?? "/proc"
 const SYS = process.env.HOST_SYS ?? "/sys"
 const FS_ROOT = process.env.HOST_FS ?? "/"
+const DARWIN = process.platform === "darwin"
 
 interface CpuSample {
   idle: number
@@ -22,6 +36,9 @@ let lastTick = Date.now()
 let snapshot: HostMetrics = empty()
 
 function readHostInfo() {
+  if (DARWIN) {
+    return { hostname: osHostname(), os: `${osType()} ${osRelease()}` }
+  }
   // Read the *host's* identity via the hostfs mount — /etc inside the
   // container is the runtime image's own.
   const hostname = (() => {
@@ -62,6 +79,16 @@ function tryRead(file: string): string | null {
 }
 
 function readCpu(): CpuSample | null {
+  if (DARWIN) {
+    // Cumulative per-core times — same delta-in-tick() shape as the /proc path.
+    let idle = 0
+    let total = 0
+    for (const c of cpus()) {
+      idle += c.times.idle
+      total += c.times.idle + c.times.user + c.times.nice + c.times.sys + c.times.irq
+    }
+    return total > 0 ? { idle, total } : null
+  }
   const data = tryRead(join(PROC, "stat"))
   if (!data) return null
   const first = data.split("\n")[0] ?? ""
@@ -90,7 +117,7 @@ function readNet(): NetSample | null {
   // PID 1's netns (host) instead, and only the default-route interface to
   // avoid double-counting docker bridges / veth pairs.
   const data = tryRead(join(PROC, "1", "net", "dev"))
-  if (!data) return null
+  if (!data) return DARWIN ? darwinNet() : null
   const want = defaultInterface()
   let rx = 0
   let tx = 0
@@ -108,7 +135,34 @@ function readNet(): NetSample | null {
   return seen ? { rx, tx } : null
 }
 
+/** macOS: cumulative byte counters of the default-route interface via
+ *  network.ts's netstat parsing — same {rx,tx} shape, tick() does the delta. */
+function darwinNet(): NetSample | null {
+  const iface = defaultIfaceName()
+  if (!iface) return null
+  const found = listInterfaces().find((i) => i.name === iface)
+  if (!found || found.rxBytes == null || found.txBytes == null) return null
+  return { rx: found.rxBytes, tx: found.txBytes }
+}
+
 function readMem() {
+  if (DARWIN) {
+    // vm_stat: available ≈ free + inactive + speculative + purgeable pages.
+    let out = ""
+    try {
+      out = execSync("vm_stat", { encoding: "utf8" })
+    } catch {
+      return null
+    }
+    const ps = Number(/page size of (\d+)/.exec(out)?.[1] ?? 4096)
+    const pick = (label: string): number =>
+      Number(new RegExp(`^${label}[^:]*:[\\s]+([\\d]+)`, "m").exec(out)?.[1] ?? 0) * ps
+    const avail =
+      pick("Pages free") + pick("Pages inactive") + pick("Pages speculative") + pick("Pages purgeable")
+    const total = totalmem()
+    const used = Math.max(0, total - avail)
+    return { total, used, percent: total > 0 ? (used / total) * 100 : 0 }
+  }
   const data = tryRead(join(PROC, "meminfo"))
   if (!data) return null
   const pick = (key: string): number | null => {
@@ -135,6 +189,10 @@ function readDisk() {
 }
 
 function readLoad() {
+  if (DARWIN) {
+    const [one = 0, five = 0, fifteen = 0] = loadavg()
+    return { one, five, fifteen }
+  }
   const data = tryRead(join(PROC, "loadavg"))
   if (!data) return null
   const p = data.split(/\s+/)
@@ -142,6 +200,13 @@ function readLoad() {
 }
 
 function readProcesses(): number | null {
+  if (DARWIN) {
+    try {
+      return Number(execSync("ps -axo pid=", { encoding: "utf8" }).trim().split("\n").length)
+    } catch {
+      return null
+    }
+  }
   try {
     return readdirSync(PROC).filter((n) => /^\d+$/.test(n)).length
   } catch {
@@ -150,6 +215,15 @@ function readProcesses(): number | null {
 }
 
 function readTcp(): number | null {
+  if (DARWIN) {
+    try {
+      return execSync("netstat -an -p tcp", { encoding: "utf8" })
+        .split("\n")
+        .filter((l) => /ESTABLISHED/.test(l)).length
+    } catch {
+      return null
+    }
+  }
   // /proc/net/* resolves to the *reader's* network namespace, so from inside a
   // container /host/proc/net/tcp shows the container's own (empty) table.
   // Read PID 1's netns instead — host init lives in the host netns.
@@ -196,6 +270,14 @@ function readNicSpeed(): number | null {
 }
 
 function readUptime(): number | null {
+  if (DARWIN) {
+    try {
+      const sec = Number(/{ sec = (\d+)/.exec(execSync("sysctl -n kern.boottime", { encoding: "utf8" }))?.[1])
+      return Number.isFinite(sec) ? Date.now() / 1000 - sec : null
+    } catch {
+      return null
+    }
+  }
   const data = tryRead(join(PROC, "uptime"))
   if (!data) return null
   return Number(data.split(/\s+/)[0])

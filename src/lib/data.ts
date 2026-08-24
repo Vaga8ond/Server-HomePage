@@ -19,7 +19,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Storage", id: "storage", icon: Database },
   { label: "Network", id: "network", icon: Globe },
   { label: "Logs", id: "logs", icon: Boxes },
-  { label: "Settings", id: "settings", icon: Database },
 ]
 
 export type GaugeKey = "cpu" | "memory" | "disk" | "network"

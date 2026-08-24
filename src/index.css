@@ -313,3 +313,23 @@
 .recharts-surface {
   overflow: visible;
 }
+
+/* page transition: replays on nav change (keyed remount in App.tsx) */
+.view-enter {
+  animation: view-enter 0.25s ease-out;
+}
+@keyframes view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-enter {
+    animation: none;
+  }
+}
