@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
 
 import { ContainersView } from "@/components/dashboard/containers-view"
 import { DesignView } from "@/components/dashboard/design-view"
@@ -15,7 +16,7 @@ import { useTheme } from "@/lib/use-theme"
 
 export default function App() {
   const { isDark, toggle } = useTheme()
-  const [activeNav, setActiveNav] = useHashRoute()
+  const [activeNav, setActiveNav, dir] = useHashRoute()
   const { data: services, error, loading, refetch } = usePoll(fetchServices, 5000)
   const serviceList = services ?? []
 
@@ -32,9 +33,19 @@ export default function App() {
         />
 
         <main className="flex-1 px-7 pb-12 pt-7">
-          <div key={activeNav} className="view-enter">
-            {renderView(activeNav, serviceList, loading, refetch)}
-          </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div
+              key={activeNav}
+              custom={dir}
+              variants={PAGE_VARIANTS}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.25, ease: [0.25, 1, 0.35, 1] }}
+            >
+              {renderView(activeNav, serviceList, loading, refetch)}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
@@ -43,22 +54,47 @@ export default function App() {
 
 /** URL-hash-backed nav route (#/services etc.) — survives refresh and
  *  back/forward. Unknown/empty hashes fall back to "overview". */
-function useHashRoute(): [string, (id: string) => void] {
+const ROUTE_ORDER = ["overview", "services", "monitoring", "storage", "network", "logs", "design"]
+
+/** Direction-aware hash nav: returns [route, navigate, direction] where
+ *  direction is +1 (forward) / -1 (back) by sidebar order, so page
+ *  transitions slide the right way — including browser back/forward. */
+function useHashRoute(): [string, (id: string) => void, 1 | -1] {
   const read = () => location.hash.replace(/^#\/?/, "") || "overview"
   const [route, setRoute] = useState(read)
+  const lastRef = useRef(route)
+  const [dir, setDir] = useState<1 | -1>(1)
 
-  const navigate = useCallback((id: string) => {
-    location.hash = `/${id}`
-    setRoute(id)
+  const apply = useCallback((next: string) => {
+    const cur = lastRef.current
+    if (cur === next) return
+    const delta = ROUTE_ORDER.indexOf(next) - ROUTE_ORDER.indexOf(cur)
+    setDir(delta >= 0 ? 1 : -1)
+    lastRef.current = next
+    setRoute(next)
   }, [])
+
+  const navigate = useCallback(
+    (id: string) => {
+      location.hash = `/${id}`
+      apply(id)
+    },
+    [apply],
+  )
 
   useEffect(() => {
-    const onHash = () => setRoute(read())
+    const onHash = () => apply(read())
     window.addEventListener("hashchange", onHash)
     return () => window.removeEventListener("hashchange", onHash)
-  }, [])
+  }, [apply])
 
-  return [route, navigate]
+  return [route, navigate, dir]
+}
+
+const PAGE_VARIANTS = {
+  enter: (d: 1 | -1) => ({ opacity: 0, x: 14 * d }),
+  center: { opacity: 1, x: 0 },
+  exit: (d: 1 | -1) => ({ opacity: 0, x: -14 * d }),
 }
 
 function renderView(

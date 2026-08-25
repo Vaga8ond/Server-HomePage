@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from "react"
+import { AnimatePresence, motion } from "motion/react"
 import { FileText, X } from "lucide-react"
+import { MorphIcon } from "morphicons/react"
 
 import { ContainerControls } from "@/components/dashboard/container-controls"
 import { PageHeader } from "@/components/dashboard/page-header"
@@ -49,13 +51,22 @@ export function ContainersView() {
         )}
       </div>
 
-      {logName && (
-        <div
+      <AnimatePresence>
+        {logName && (
+        <motion.div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
           onClick={() => setLogName(null)}
         >
-          <div
+          <motion.div
             className="glass-card flex max-h-[72vh] w-full max-w-3xl flex-col overflow-hidden"
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
             style={{ background: "var(--bg-elevated)" } as CSSProperties}
             onClick={(e) => e.stopPropagation()}
           >
@@ -74,9 +85,10 @@ export function ContainersView() {
             <pre className="mono flex-1 overflow-auto whitespace-pre-wrap px-5 py-4 text-xs leading-relaxed text-ink-soft">
               {logBusy ? "loading…" : logText && logText.length > 0 ? logText : "(no output)"}
             </pre>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
@@ -108,7 +120,7 @@ function ContainerCard({
           className="flex size-[42px] items-center justify-center rounded-xl border"
           style={{ background: `${color}18`, borderColor: `${color}30` }}
         >
-          <Icon className="size-5" style={{ color } as CSSProperties} />
+          <MorphIcon icon={Icon} size={20} color={color} />
         </span>
         <StatusBadge status={status} />
       </div>

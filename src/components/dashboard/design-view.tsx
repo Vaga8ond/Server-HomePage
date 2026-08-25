@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 import { useEffect, useState } from "react"
-import { ArrowUpRight } from "lucide-react"
+import { ArrowUpRight } from "lucide"
+import { MorphIcon } from "morphicons/react"
 
 import { PageHeader } from "@/components/dashboard/page-header"
 import { getServiceIcon } from "@/lib/icons"
@@ -17,6 +18,7 @@ interface DesignEntry {
 function ResourceCard({ entry }: { entry: DesignEntry }) {
   const Icon = getServiceIcon(entry.iconKey)
   const host = new URL(entry.url).hostname.replace(/^www\./, "")
+  const [hovered, setHovered] = useState(false)
   return (
     <a
       href={entry.url}
@@ -24,6 +26,8 @@ function ResourceCard({ entry }: { entry: DesignEntry }) {
       rel="noreferrer"
       className="glass-card svc-card group block p-5"
       style={{ "--svc": entry.color } as CSSProperties}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       <div className="mb-3.5 flex items-start justify-between">
         <span
@@ -33,9 +37,14 @@ function ResourceCard({ entry }: { entry: DesignEntry }) {
             borderColor: `${entry.color}30`,
           }}
         >
-          <Icon className="size-5" style={{ color: entry.color } as CSSProperties} />
+          <MorphIcon icon={hovered ? ArrowUpRight : Icon} size={20} color={entry.color} />
         </span>
-        <ArrowUpRight className="size-4 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        <MorphIcon
+          icon={ArrowUpRight}
+          size={16}
+          color="currentColor"
+          className="text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        />
       </div>
       <div className="mb-4">
         <div className="text-[15px] font-semibold text-ink">{entry.name}</div>

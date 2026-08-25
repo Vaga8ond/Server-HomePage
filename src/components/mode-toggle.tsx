@@ -1,4 +1,5 @@
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "lucide" // icon *data* for morphicons, not components
+import { MorphIcon } from "morphicons/react"
 
 import { cn } from "@/lib/utils"
 
@@ -20,7 +21,8 @@ export function ModeToggle({
         "text-base text-ink-soft transition-colors duration-150 hover:text-ink",
       )}
     >
-      {isDark ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      {/* sun ↔ moon morph with spring physics (rotation emerges from the math) */}
+      <MorphIcon icon={isDark ? Sun : Moon} size={16} color="currentColor" />
     </button>
   )
 }

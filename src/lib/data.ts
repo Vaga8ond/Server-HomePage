@@ -5,6 +5,13 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react"
+import type { IconNode } from "lucide"
+import {
+  Boxes as BoxesNode,
+  Database as DatabaseNode,
+  Globe as GlobeNode,
+  Zap as ZapNode,
+} from "lucide"
 
 export interface NavItem {
   label: string
@@ -27,14 +34,14 @@ export interface GaugeDef {
   key: GaugeKey
   label: string
   color: string
-  icon: LucideIcon
+  icon: IconNode
 }
 
 export const GAUGE_DEFS: GaugeDef[] = [
-  { key: "cpu", label: "CPU", color: "#00E5FF", icon: Zap },
-  { key: "memory", label: "Memory", color: "#A855F7", icon: Boxes },
-  { key: "disk", label: "Disk", color: "#22C55E", icon: Database },
-  { key: "network", label: "Network", color: "#F59E0B", icon: Globe },
+  { key: "cpu", label: "CPU", color: "#00E5FF", icon: ZapNode },
+  { key: "memory", label: "Memory", color: "#A855F7", icon: BoxesNode },
+  { key: "disk", label: "Disk", color: "#22C55E", icon: DatabaseNode },
+  { key: "network", label: "Network", color: "#F59E0B", icon: GlobeNode },
 ]
 
 export type StatKey = "load" | "processes" | "connections" | "temperature"

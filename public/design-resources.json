@@ -127,6 +127,30 @@
           "url": "https://rive.app",
           "iconKey": "bot",
           "color": "#8B5CF6"
+        },
+        {
+          "name": "Iconoir",
+          "url": "https://iconoir.com",
+          "iconKey": "notebook",
+          "color": "#7C3AED"
+        },
+        {
+          "name": "Akar Icons",
+          "url": "https://akaricons.com",
+          "iconKey": "settings",
+          "color": "#5865F2"
+        },
+        {
+          "name": "Untitled UI Icons",
+          "url": "https://www.untitledui.com/icons",
+          "iconKey": "box",
+          "color": "#8B5CF6"
+        },
+        {
+          "name": "Hugeicons",
+          "url": "https://hugeicons.com",
+          "iconKey": "globe",
+          "color": "#2563EB"
         }
       ]
     },

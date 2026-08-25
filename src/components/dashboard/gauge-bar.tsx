@@ -1,5 +1,6 @@
+import type { IconNode } from "lucide"
+import { MorphIcon } from "morphicons/react"
 import type { CSSProperties } from "react"
-import type { LucideIcon } from "lucide-react"
 
 export function GaugeBar({
   label,
@@ -8,7 +9,7 @@ export function GaugeBar({
   max,
   percent,
   color,
-  icon: Icon,
+  icon,
 }: {
   label: string
   value: string
@@ -16,7 +17,7 @@ export function GaugeBar({
   max: string
   percent: number
   color: string
-  icon: LucideIcon
+  icon: IconNode
 }) {
   const pct = Math.min(100, Math.max(0, percent))
 
@@ -24,7 +25,7 @@ export function GaugeBar({
     <div className="glass-card p-[20px]">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Icon className="size-[18px]" style={{ color } as CSSProperties} />
+          <MorphIcon icon={icon} size={18} color={color} />
           <span className="text-[13px] font-medium text-ink-soft">{label}</span>
         </div>
         <span className="mono text-[22px] font-bold tracking-[-0.02em] text-ink">

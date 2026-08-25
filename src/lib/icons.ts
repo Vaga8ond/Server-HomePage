@@ -43,12 +43,14 @@ import {
   Video,
   Wallet,
   Zap,
-  type LucideIcon,
-} from "lucide-react"
+} from "lucide"
+// same icon names as before, but raw IconNode data — morphicons consumes
+// these directly instead of lucide-react components
+import type { IconNode } from "lucide"
 
 /** iconKey → lucide icon. Unknown keys fall back to Container. Keep in sync
  *  with the list in README.md (服务目录 · iconKey). */
-export const SERVICE_ICONS: Record<string, LucideIcon> = {
+export const SERVICE_ICONS: Record<string, IconNode> = {
   // Media & content
   images: Images,
   image: Image,
@@ -101,7 +103,7 @@ export const SERVICE_ICONS: Record<string, LucideIcon> = {
   wallet: Wallet,
 }
 
-export function getServiceIcon(iconKey: string): LucideIcon {
+export function getServiceIcon(iconKey: string): IconNode {
   return SERVICE_ICONS[iconKey] ?? Container
 }
 
