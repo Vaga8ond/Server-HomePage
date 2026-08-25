@@ -29,16 +29,21 @@ WORKDIR /app
 ARG APK_MIRROR=https://mirrors.aliyun.com
 RUN sed -i "s#https://dl-cdn.alpinelinux.org#${APK_MIRROR}#g" /etc/apk/repositories \
   && apk add --no-cache tzdata
+# Non-root runtime user; node group reused as the docker gid via compose
+# group_add so it can read the mounted docker.sock.
+RUN addgroup -S nodejs -g 10001 && adduser -S -u 10001 -G nodejs appuser \
+  && mkdir -p /app/data && chown 10001:10001 /app/data
 ENV NODE_ENV=production
-COPY --from=backend-deps /app/node_modules ./node_modules
-COPY backend/package.json ./package.json
-COPY backend/src ./src
-COPY backend/config ./config
-COPY --from=frontend /app/dist ./public
+COPY --from=backend-deps --chown=10001:10001 /app/node_modules ./node_modules
+COPY --chown=10001:10001 backend/package.json ./package.json
+COPY --chown=10001:10001 backend/src ./src
+COPY --chown=10001:10001 backend/config ./config
+COPY --from=frontend --chown=10001:10001 /app/dist ./public
 ENV PORT=8088 \
     STATIC_DIR=/app/public \
     HOST_PROC=/host/proc \
     HOST_SYS=/host/sys \
     HOST_FS=/hostfs
 EXPOSE 8088
+USER 10001
 CMD ["node", "--import", "tsx", "src/index.ts"]

@@ -13,7 +13,9 @@ services:
       - /:/hostfs:ro
       # Docker socket — lets the backend list/control containers (Phase 2).
       - /var/run/docker.sock:/var/run/docker.sock
-      # History recorder storage — survives redeploys.
+      # History recorder storage — survives redeploys. First run: the bind
+      # dir is created root-owned by docker; give it to the app user once:
+      #   sudo mkdir -p ./data && sudo chown -R 10001:10001 ./data
       - ./data:/app/data
       # Per-server service catalog — edit on the server, never overwritten by deploys.
       - ./backend/config:/app/config:ro
@@ -25,3 +27,15 @@ services:
     # Services run on the host: let the container reach them by name.
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Run as non-root; host docker gid (usually 999) is injected read-only so
+    # the backend can talk to the mounted docker.sock. Find yours with:
+    #   getent group docker | cut -d: -f3
+    user: "10001"
+    group_add:
+      - "${DOCKER_GID:-999}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
