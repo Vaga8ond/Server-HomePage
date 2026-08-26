@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { FileText, X } from "lucide-react"
+import { FileText, X } from "lucide"
 import { MorphIcon } from "morphicons/react"
 
 import { ContainerControls } from "@/components/dashboard/container-controls"
@@ -79,7 +79,7 @@ export function ContainersView() {
                 onClick={() => setLogName(null)}
                 className="flex size-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink"
               >
-                <X className="size-4" />
+                <MorphIcon icon={X} size={16} />
               </button>
             </div>
             <pre className="mono flex-1 overflow-auto whitespace-pre-wrap px-5 py-4 text-xs leading-relaxed text-ink-soft">
@@ -157,7 +157,7 @@ function ContainerCard({
           title="View logs"
           className="inline-flex flex-1 items-center justify-center gap-1 rounded-[7px] border border-line px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:text-ink"
         >
-          <FileText className="size-3" />
+          <MorphIcon icon={FileText} size={12} />
           Logs
         </button>
         <ContainerControls

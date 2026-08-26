@@ -1,4 +1,5 @@
-import { TriangleAlert } from "lucide-react"
+import { TriangleAlert } from "lucide"
+import { MorphIcon } from "morphicons/react"
 
 import { LiveClock } from "@/components/dashboard/live-clock"
 import { ModeToggle } from "@/components/mode-toggle"
@@ -40,7 +41,7 @@ export function Topbar({
 
           {!online && (
             <div className="flex items-center gap-1.5 rounded-full border border-amber-glow/20 bg-amber-glow/10 px-3 py-1.5">
-              <TriangleAlert className="size-3 text-amber-glow" />
+              <MorphIcon icon={TriangleAlert} size={12} className="text-amber-glow" />
               <span className="mono text-xs font-semibold text-amber-glow">
                 reconnecting
               </span>

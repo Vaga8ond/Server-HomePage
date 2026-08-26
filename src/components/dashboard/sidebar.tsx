@@ -1,9 +1,9 @@
-import { Palette } from "lucide-react"
+import { Palette } from "lucide"
+import { MorphIcon } from "morphicons/react"
 
 import { NAV_ITEMS } from "@/lib/data"
 import { fetchHost } from "@/lib/api"
 import { usePoll } from "@/lib/use-poll"
-import { cn } from "@/lib/utils"
 
 export function Sidebar({
   activeNav,
@@ -37,14 +37,13 @@ export function Sidebar({
           Navigation
         </div>
         {NAV_ITEMS.map((item) => {
-          const Icon = item.icon
           return (
             <div
               key={item.id}
-              className={cn("nav-item", activeNav === item.id && "active")}
+              className={`nav-item ${activeNav === item.id ? "active" : ""}`}
               onClick={() => onNavChange(item.id)}
             >
-              <Icon className="size-[14px]" />
+              <MorphIcon icon={item.icon} size={14} />
               {item.label}
             </div>
           )
@@ -54,10 +53,10 @@ export function Sidebar({
           Resources
         </div>
         <div
-          className={cn("nav-item", activeNav === "design" && "active")}
+          className={`nav-item ${activeNav === "design" ? "active" : ""}`}
           onClick={() => onNavChange("design")}
         >
-          <Palette className="size-[14px]" />
+          <MorphIcon icon={Palette} size={14} />
           Design
         </div>
       </nav>

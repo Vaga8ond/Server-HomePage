@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
-import { Play, RotateCw, Square } from "lucide-react"
+import { Play, RotateCw, Square } from "lucide"
+import { MorphIcon } from "morphicons/react"
 
 import { controlContainer, type ContainerAction } from "@/lib/api"
 
@@ -35,7 +36,7 @@ export function ContainerControls({
       {running ? (
         <>
           <Btn
-            icon={<RotateCw className="size-3" />}
+            icon={<MorphIcon icon={RotateCw} size={12} />}
             color="#F59E0B"
             label="Restart"
             busy={busy}
@@ -43,7 +44,7 @@ export function ContainerControls({
             onClick={() => act("restart")}
           />
           <Btn
-            icon={<Square className="size-3" />}
+            icon={<MorphIcon icon={Square} size={12} />}
             color="#EF4444"
             label="Stop"
             busy={busy}
@@ -53,7 +54,7 @@ export function ContainerControls({
         </>
       ) : (
         <Btn
-          icon={<Play className="size-3" />}
+          icon={<MorphIcon icon={Play} size={12} />}
           color="#22C55E"
           label="Start"
           busy={busy}

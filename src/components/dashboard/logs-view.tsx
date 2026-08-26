@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { RefreshCw, Search } from "lucide-react"
+import { RefreshCw, Search } from "lucide"
+import { MorphIcon } from "morphicons/react"
 
 import { PageHeader } from "@/components/dashboard/page-header"
 import { StatCard } from "@/components/dashboard/stat-card"
@@ -142,7 +143,7 @@ export function LogsView() {
       <div className="glass-card overflow-hidden p-0">
         <div className="flex items-center gap-2.5 border-b border-line px-[18px] py-3">
           <div className="relative max-w-64 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3 -translate-y-1/2 text-ink-faint" />
+            <MorphIcon icon={Search} size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -181,7 +182,7 @@ export function LogsView() {
             className="ml-auto flex size-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink"
             title="Refresh"
           >
-            <RefreshCw className={`size-3.5 ${busy ? "animate-spin" : ""}`} />
+            <MorphIcon icon={RefreshCw} size={14} className={busy ? "animate-spin" : ""} />
           </button>
           <span className="mono text-[10px] text-ink-faint">{filtered.length} entries</span>
         </div>
