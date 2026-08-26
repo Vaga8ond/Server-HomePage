@@ -142,11 +142,11 @@ function IfaceCard({ iface }: { iface: NetInterface }) {
             } as CSSProperties}
           >
             {iface.name === "lo" ? (
-              <MorphIcon icon={Radio} size={14} color="currentColor" className="text-ink-faint" />
+              <MorphIcon icon={Radio} size={14} className="text-ink-faint" />
             ) : iface.name.startsWith("wl") || iface.name.startsWith("wlan") ? (
-              <MorphIcon icon={Wifi} size={14} color={up ? "var(--accent-cyan)" : "currentColor"} className="text-ink-faint" />
+              <MorphIcon icon={Wifi} size={14} color={up ? "var(--accent-cyan)" : undefined} />
             ) : (
-              <MorphIcon icon={HardDrive} size={14} color={up ? "var(--accent-cyan)" : "currentColor"} className="text-ink-faint" />
+              <MorphIcon icon={HardDrive} size={14} color={up ? "var(--accent-cyan)" : undefined} />
             )}
           </span>
           <span className="mono text-sm font-bold text-ink">{iface.name}</span>

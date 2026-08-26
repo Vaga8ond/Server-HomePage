@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react"
 import { useEffect, useState } from "react"
 import { ArrowUpRight } from "lucide"
+import { ArrowUpRight as ArrowUpRightIcon } from "lucide-react"
 import { MorphIcon } from "morphicons/react"
 
 import { PageHeader } from "@/components/dashboard/page-header"
@@ -39,12 +40,7 @@ function ResourceCard({ entry }: { entry: DesignEntry }) {
         >
           <MorphIcon icon={hovered ? ArrowUpRight : Icon} size={20} color={entry.color} />
         </span>
-        <MorphIcon
-          icon={ArrowUpRight}
-          size={16}
-          color="currentColor"
-          className="text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-        />
+        <ArrowUpRightIcon className="size-4 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
       </div>
       <div className="mb-4">
         <div className="text-[15px] font-semibold text-ink">{entry.name}</div>

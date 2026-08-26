@@ -11,6 +11,7 @@ import { StorageView } from "@/components/dashboard/storage-view"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { Topbar } from "@/components/dashboard/topbar"
 import { fetchServices, type ApiService } from "@/lib/api"
+import { NAV_ITEMS } from "@/lib/data"
 import { usePoll } from "@/lib/use-poll"
 import { useTheme } from "@/lib/use-theme"
 
@@ -54,7 +55,7 @@ export default function App() {
 
 /** URL-hash-backed nav route (#/services etc.) — survives refresh and
  *  back/forward. Unknown/empty hashes fall back to "overview". */
-const ROUTE_ORDER = ["overview", "services", "monitoring", "storage", "network", "logs", "design"]
+const ROUTE_ORDER = NAV_ITEMS.map((n) => n.id)
 
 /** Direction-aware hash nav: returns [route, navigate, direction] where
  *  direction is +1 (forward) / -1 (back) by sidebar order, so page
