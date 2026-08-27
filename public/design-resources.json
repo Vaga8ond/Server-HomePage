@@ -151,6 +151,12 @@
           "url": "https://hugeicons.com",
           "iconKey": "globe",
           "color": "#2563EB"
+        },
+        {
+          "name": "Streamline Pixel",
+          "url": "https://www.streamlinehq.com/icons/pixel/users",
+          "iconKey": "users",
+          "color": "#F59E0B"
         }
       ]
     },
