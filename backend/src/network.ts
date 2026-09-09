@@ -73,7 +73,7 @@ function darwinInterfaces(
 ): NetInterface[] {
   let netstat = ""
   try {
-    netstat = execSync("netstat -ib", { encoding: "utf8" })
+    netstat = execSync("netstat -inb", { encoding: "utf8", timeout: 3000 })
   } catch {
     netstat = ""
   }
