@@ -58,6 +58,16 @@ export async function probeAll(
   if (cache && Date.now() - cache.ts < CACHE_MS) return cache.data
   const results = await Promise.all(
     services.map(async (service) => {
+      if (service.probe === false) {
+        // No HTTP surface — the real status is derived from the mapped
+        // container state in index.ts; this placeholder is never shown.
+        return {
+          ...service,
+          status: "running" as ServiceStatus,
+          latencyMs: null,
+          checkedAt: Date.now(),
+        }
+      }
       const result = await probe(probeUrl(service))
       return {
         ...service,

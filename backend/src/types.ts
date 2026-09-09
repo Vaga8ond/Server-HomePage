@@ -13,6 +13,9 @@ export interface ServiceConfig {
   container?: string
   /** Explicit URL override — for services on another machine. Optional. */
   url?: string
+  /** Skip HTTP probing — status derives from the mapped container state.
+   *  For services without an HTTP surface (e.g. databases). Optional. */
+  probe?: boolean
 }
 
 export interface ServiceStatusResult extends ServiceConfig {

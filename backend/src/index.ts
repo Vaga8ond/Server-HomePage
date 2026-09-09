@@ -57,12 +57,20 @@ app.get("/api/services", async (c) => {
     containerStateMap(),
   ])
   return c.json(
-    probed.map((service) => ({
-      ...service,
-      containerState: service.container
+    probed.map((service) => {
+      const state = service.container
         ? (states.get(service.container) ?? null)
-        : null,
-    })),
+        : null
+      return {
+        ...service,
+        // probe:false services carry no HTTP status — derive it from the
+        // mapped container state instead of the placeholder from probeAll.
+        ...(service.probe === false
+          ? { status: state === "running" ? ("running" as const) : ("stopped" as const) }
+          : {}),
+        containerState: state,
+      }
+    }),
   )
 })
 
