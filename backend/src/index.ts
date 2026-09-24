@@ -4,7 +4,7 @@ import { extname, join, normalize } from "node:path"
 import { Hono } from "hono"
 import { serve } from "@hono/node-server"
 
-import { readServices } from "./config"
+import { readServices, apiToken } from "./config"
 import {
   containerLogs,
   containerStateMap,
@@ -24,6 +24,21 @@ startSampler()
 startRecorder()
 
 const app = new Hono()
+
+// Bearer auth for /api (static SPA stays open so the browser can prompt for
+// the token). /api/health stays public for monitoring. No token configured →
+// API stays open (local dev).
+const API_TOKEN = apiToken()
+if (API_TOKEN) {
+  console.log("api auth: enabled")
+  app.use("/api/*", async (c, next) => {
+    if (c.req.path === "/api/health") return next()
+    if (c.req.header("authorization") !== `Bearer ${API_TOKEN}`) {
+      return c.json({ error: "unauthorized" }, 401)
+    }
+    await next()
+  })
+}
 const PORT = Number(process.env.PORT ?? 8088)
 const STATIC_DIR = process.env.STATIC_DIR ?? ""
 
@@ -120,19 +135,32 @@ app.post("/api/containers/:name/:action", async (c) => {
 // serves the frontend and proxies /api here, so STATIC_DIR is unset.
 if (STATIC_DIR && existsSync(STATIC_DIR)) {
   const indexHtml = readFileSync(join(STATIC_DIR, "index.html"), "utf8")
-  const fileCache = new Map<string, { body: Uint8Array; type: string }>()
+  const fileCache = new Map<
+    string,
+    { body: Uint8Array; type: string; mtimeMs: number }
+  >()
 
   app.get("*", (c) => {
     const reqPath = decodeURIComponent(c.req.path)
     const safe = normalize(join(STATIC_DIR, reqPath))
     if (safe.startsWith(STATIC_DIR)) {
       let hit = fileCache.get(safe)
+      if (hit) {
+        // mtime check so edited files are picked up without a restart
+        // (index.html is the one file this realistically matters for).
+        try {
+          if (statSync(safe).mtimeMs !== hit.mtimeMs) hit = undefined
+        } catch {
+          hit = undefined
+        }
+      }
       if (!hit) {
         try {
           if (existsSync(safe) && statSync(safe).isFile()) {
             hit = {
               body: new Uint8Array(readFileSync(safe)),
               type: MIME[extname(safe)] ?? "application/octet-stream",
+              mtimeMs: statSync(safe).mtimeMs,
             }
             fileCache.set(safe, hit)
           }

@@ -61,6 +61,25 @@ export function readServices(): ServiceConfig[] {
   }
 }
 
+/** Bearer token for the API — API_TOKEN env wins, else <repo root>/.api-token.
+ *  No token configured → API stays open (local dev, air-gapped LAN). */
+const TOKEN_PATH = process.env.API_TOKEN_FILE ?? join(HERE, "..", "..", ".api-token")
+let cachedToken: string | null | undefined
+
+export function apiToken(): string | null {
+  if (cachedToken !== undefined) return cachedToken
+  if (process.env.API_TOKEN) {
+    cachedToken = process.env.API_TOKEN
+    return cachedToken
+  }
+  try {
+    cachedToken = readFileSync(TOKEN_PATH, "utf8").trim() || null
+  } catch {
+    cachedToken = null
+  }
+  return cachedToken
+}
+
 /** Where the backend probes; the browser link is derived client-side instead. */
 export function probeUrl(svc: ServiceConfig): string {
   if (svc.url) return svc.url

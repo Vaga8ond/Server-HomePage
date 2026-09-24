@@ -15,6 +15,10 @@ dist-ssr
 # Secrets / local env
 .env
 .env.*
+.api-token
+
+# editor backups
+*.bak
 
 # TS build info
 *.tsbuildinfo

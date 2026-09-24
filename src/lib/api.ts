@@ -101,20 +101,40 @@ export interface NetInterface {
 
 const API = "/api"
 
+const TOKEN_KEY = "hb_token"
+
+function authHeaders(): Record<string, string> {
+  const token = localStorage.getItem(TOKEN_KEY)
+  return token ? { authorization: `Bearer ${token}` } : {}
+}
+
+/** fetch + auth. On 401, asks for the token once, stores it, retries. */
+async function api(path: string, init?: RequestInit): Promise<Response> {
+  let res = await fetch(path, { ...init, headers: { ...authHeaders(), ...init?.headers } })
+  if (res.status === 401 && typeof window !== "undefined") {
+    const token = window.prompt("请输入 API Token（服务器 ~/homebase/.api-token 的内容）")
+    if (token?.trim()) {
+      localStorage.setItem(TOKEN_KEY, token.trim())
+      res = await fetch(path, { ...init, headers: { ...authHeaders(), ...init?.headers } })
+    }
+  }
+  return res
+}
+
 export async function fetchHost(): Promise<HostMetrics> {
-  const res = await fetch(`${API}/host`)
+  const res = await api(`${API}/host`)
   if (!res.ok) throw new Error(`host ${res.status}`)
   return (await res.json()) as HostMetrics
 }
 
 export async function fetchServices(): Promise<ApiService[]> {
-  const res = await fetch(`${API}/services`)
+  const res = await api(`${API}/services`)
   if (!res.ok) throw new Error(`services ${res.status}`)
   return (await res.json()) as ApiService[]
 }
 
 export async function fetchContainers(): Promise<ContainerInfo[]> {
-  const res = await fetch(`${API}/containers`)
+  const res = await api(`${API}/containers`)
   if (!res.ok) throw new Error(`containers ${res.status}`)
   return (await res.json()) as ContainerInfo[]
 }
@@ -123,26 +143,26 @@ export async function controlContainer(
   name: string,
   action: ContainerAction,
 ): Promise<void> {
-  const res = await fetch(`${API}/containers/${encodeURIComponent(name)}/${action}`, {
+  const res = await api(`${API}/containers/${encodeURIComponent(name)}/${action}`, {
     method: "POST",
   })
   if (!res.ok) throw new Error(`control ${res.status}`)
 }
 
 export async function fetchHistory(window: HistoryWindow): Promise<HistorySeries> {
-  const res = await fetch(`${API}/history?window=${window}`)
+  const res = await api(`${API}/history?window=${window}`)
   if (!res.ok) throw new Error(`history ${res.status}`)
   return (await res.json()) as HistorySeries
 }
 
 export async function fetchHistoryAggregate(): Promise<HistoryAggregate> {
-  const res = await fetch(`${API}/history/aggregate`)
+  const res = await api(`${API}/history/aggregate`)
   if (!res.ok) throw new Error(`history aggregate ${res.status}`)
   return (await res.json()) as HistoryAggregate
 }
 
 export async function fetchStorage(): Promise<{ mounts: StorageMount[] }> {
-  const res = await fetch(`${API}/storage`)
+  const res = await api(`${API}/storage`)
   if (!res.ok) throw new Error(`storage ${res.status}`)
   return (await res.json()) as { mounts: StorageMount[] }
 }
@@ -151,7 +171,7 @@ export async function fetchNetwork(): Promise<{
   defaultInterface: string | null
   interfaces: NetInterface[]
 }> {
-  const res = await fetch(`${API}/network`)
+  const res = await api(`${API}/network`)
   if (!res.ok) throw new Error(`network ${res.status}`)
   return (await res.json()) as {
     defaultInterface: string | null
@@ -160,7 +180,7 @@ export async function fetchNetwork(): Promise<{
 }
 
 export async function fetchContainerLogs(name: string): Promise<string> {
-  const res = await fetch(`${API}/containers/${encodeURIComponent(name)}/logs`)
+  const res = await api(`${API}/containers/${encodeURIComponent(name)}/logs`)
   if (!res.ok) throw new Error(`logs ${res.status}`)
   const body = (await res.json()) as { text: string }
   return body.text
