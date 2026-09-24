@@ -2,6 +2,8 @@ import {
   Boxes,
   Database,
   Globe,
+  Network,
+  ScrollText,
   Zap,
   type IconNode,
 } from "lucide"
@@ -17,8 +19,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Services", id: "services", icon: Boxes },
   { label: "Monitoring", id: "monitoring", icon: Zap },
   { label: "Storage", id: "storage", icon: Database },
-  { label: "Network", id: "network", icon: Globe },
-  { label: "Logs", id: "logs", icon: Boxes },
+  { label: "Network", id: "network", icon: Network },
+  { label: "Logs", id: "logs", icon: ScrollText },
 ]
 
 export type GaugeKey = "cpu" | "memory" | "disk" | "network"
