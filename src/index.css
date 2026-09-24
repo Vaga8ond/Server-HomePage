@@ -356,4 +356,16 @@
     flex-shrink: 0;
     padding: 7px 10px;
   }
+  /* nav itself is a vertical list (group titles + items) — flatten it too */
+  .sidebar nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+    padding: 0;
+    overflow-y: visible;
+  }
+  .sidebar nav > div:not(.nav-item) {
+    display: none; /* hide "Navigation" / "Resources" group titles on mobile */
+  }
 }
