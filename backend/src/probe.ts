@@ -31,6 +31,8 @@ function probe(url: string): Promise<{
     }
     const lib = target.protocol === "https:" ? https : http
     const start = Date.now()
+    // Intentional: homelab services often use self-signed certs; we only
+    // care about "did it answer", not who signed it. Keep LAN-only URLs here.
     const req = lib.get(
       url,
       { timeout: TIMEOUT_MS, rejectUnauthorized: false },

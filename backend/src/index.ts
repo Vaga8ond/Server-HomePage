@@ -143,7 +143,9 @@ if (STATIC_DIR && existsSync(STATIC_DIR)) {
   app.get("*", (c) => {
     const reqPath = decodeURIComponent(c.req.path)
     const safe = normalize(join(STATIC_DIR, reqPath))
-    if (safe.startsWith(STATIC_DIR)) {
+    // Trailing separator: a bare startsWith(STATIC_DIR) would also admit
+    // sibling dirs whose name merely shares the prefix ("public-backup").
+    if (safe.startsWith(normalize(STATIC_DIR) + "/")) {
       let hit = fileCache.get(safe)
       if (hit) {
         // mtime check so edited files are picked up without a restart
