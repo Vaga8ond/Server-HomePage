@@ -57,6 +57,21 @@ docker run -d --name homebase \
 
 Reads plain `/proc` and `/sys` when running on the host — mount them only inside a container. Node ≥ 22.
 
+## Authentication
+
+The API supports optional Bearer-token auth. Set `API_TOKEN` (env) or put the token in `.api-token`
+at the repo root; from then on every `/api/*` request needs `Authorization: Bearer <token>`
+(`/api/health` stays open for monitoring). No token configured → API is open (local dev).
+
+The frontend picks this up automatically: on the first `401` it prompts for the token, stores it
+in `localStorage` and retries.
+
+## Tests
+
+```bash
+npm test          # vitest — backend unit tests (config, probe, network, history)
+```
+
 ## Structure
 
 ```

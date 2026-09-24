@@ -65,7 +65,22 @@ export function listInterfaces(): NetInterface[] {
   })
 }
 
-/** macOS/dev fallback: os.networkInterfaces() for names/IPs + `netstat -ib`
+/** Parse `netstat -inb` body rows → first row per iface wins (rx=Ibytes,
+ *  tx=Obytes). Exported for tests. */
+export function parseNetstatCounters(
+  netstat: string,
+): Map<string, { rx: number; tx: number }> {
+  const counters = new Map<string, { rx: number; tx: number }>()
+  for (const line of netstat.split("\n").slice(1)) {
+    const p = line.trim().split(/\s+/)
+    if (p.length < 10) continue
+    if (!counters.has(p[0]))
+      counters.set(p[0], { rx: Number(p[6]) || 0, tx: Number(p[9]) || 0 })
+  }
+  return counters
+}
+
+/** macOS/dev fallback: os.networkInterfaces() for names/IPs + `netstat -inb`
  *  for boot-cumulative byte counters. No link state on darwin — infer "up"
  *  from having a non-internal address. */
 function darwinInterfaces(
@@ -77,14 +92,7 @@ function darwinInterfaces(
   } catch {
     netstat = ""
   }
-  // Name ... Ipkts Ierrs Ibytes Opkts Oerrs Obytes — first row per iface wins
-  const counters = new Map<string, { rx: number; tx: number }>()
-  for (const line of netstat.split("\n").slice(1)) {
-    const p = line.trim().split(/\s+/)
-    if (p.length < 10) continue
-    if (!counters.has(p[0]))
-      counters.set(p[0], { rx: Number(p[6]) || 0, tx: Number(p[9]) || 0 })
-  }
+  const counters = parseNetstatCounters(netstat)
   return Object.entries(addrs)
     .filter(([name]) => name !== "lo0")
     .map(([name, list]) => {

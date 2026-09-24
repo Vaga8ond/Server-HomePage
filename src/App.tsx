@@ -1,15 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 
-import { ContainersView } from "@/components/dashboard/containers-view"
-import { DesignView } from "@/components/dashboard/design-view"
-import { LogsView } from "@/components/dashboard/logs-view"
-import { NetworkView } from "@/components/dashboard/network-view"
 import { OverviewView } from "@/components/dashboard/overview-view"
 import { ServicesView } from "@/components/dashboard/services-view"
-import { StorageView } from "@/components/dashboard/storage-view"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { Topbar } from "@/components/dashboard/topbar"
+
+// Heavy views load on demand — overview/services stay eager for first paint.
+const ContainersView = lazy(() =>
+  import("@/components/dashboard/containers-view").then((m) => ({ default: m.ContainersView })),
+)
+const DesignView = lazy(() =>
+  import("@/components/dashboard/design-view").then((m) => ({ default: m.DesignView })),
+)
+const LogsView = lazy(() =>
+  import("@/components/dashboard/logs-view").then((m) => ({ default: m.LogsView })),
+)
+const NetworkView = lazy(() =>
+  import("@/components/dashboard/network-view").then((m) => ({ default: m.NetworkView })),
+)
+const StorageView = lazy(() =>
+  import("@/components/dashboard/storage-view").then((m) => ({ default: m.StorageView })),
+)
 import { fetchServices, type ApiService } from "@/lib/api"
 import { NAV_ITEMS } from "@/lib/data"
 import { usePoll } from "@/lib/use-poll"
@@ -114,17 +126,21 @@ function renderView(
         />
       )
     case "monitoring":
-      return <ContainersView />
     case "storage":
-      return <StorageView />
     case "network":
-      return <NetworkView />
     case "logs":
-      return <LogsView />
     case "design":
-      return <DesignView />
-    case "overview":
-      return <OverviewView />
+      // Lazy views — Suspense inside the moving container so the page
+      // transition plays while the chunk streams in (LAN: near-instant).
+      return (
+        <Suspense fallback={null}>
+          {activeNav === "monitoring" && <ContainersView />}
+          {activeNav === "storage" && <StorageView />}
+          {activeNav === "network" && <NetworkView />}
+          {activeNav === "logs" && <LogsView />}
+          {activeNav === "design" && <DesignView />}
+        </Suspense>
+      )
     default:
       return <OverviewView />
   }
