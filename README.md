@@ -57,6 +57,22 @@ docker run -d --name homebase \
 
 Reads plain `/proc` and `/sys` when running on the host — mount them only inside a container. Node ≥ 22.
 
+## Deployment
+
+Currently only one production target — the Mac mini (`192.168.12.53`), run by launchd:
+
+```bash
+./deploy-mini.sh   # rsync → remote build → launchctl kickstart, serves on :8088
+```
+
+Machine-local state (never overwritten by deploys): `backend/config/services.json` (service
+catalog), `data/` (history), `~/.caddy/Caddyfile` (reverse proxy). Caddy exposes the dashboard
+as `http://mini.home.lan` → `127.0.0.1:8088`.
+
+A Linux/Docker path exists (`deploy.sh` + `docker-compose.yml`, per-host env via compose:
+`HOST_PROC=/host/proc`, `PROBE_HOST=host.docker.internal`) but is currently unused — kept for
+future re-deploys.
+
 ## Authentication
 
 The API supports optional Bearer-token auth. Set `API_TOKEN` (env) or put the token in `.api-token`

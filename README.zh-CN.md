@@ -57,6 +57,20 @@ docker run -d --name homebase \
 
 直接跑在宿主机上时读的就是 `/proc` 和 `/sys` —— 只有在容器里才需要挂载。Node ≥ 22。
 
+## 部署
+
+当前唯一生产环境：Mac mini（`192.168.12.53`），launchd 托管：
+
+```bash
+./deploy-mini.sh   # rsync → 远端构建 → launchctl kickstart，服务端口 :8088
+```
+
+机器本地状态（部署不会覆盖）：`backend/config/services.json`（服务目录）、`data/`（历史数据）、
+`~/.caddy/Caddyfile`（反向代理）。Caddy 将看板暴露为 `http://mini.home.lan` → `127.0.0.1:8088`。
+
+仓库同时保留 Linux/Docker 部署路径（`deploy.sh` + `docker-compose.yml`，按 compose 环境变量适配宿主机：
+`HOST_PROC=/host/proc`、`PROBE_HOST=host.docker.internal`），当前未使用，留作日后重部署。
+
 ## 鉴权
 
 API 支持可选的 Bearer Token 鉴权：设置 `API_TOKEN` 环境变量，或在仓库根目录放一个 `.api-token`
