@@ -61,9 +61,7 @@ docker run -d --name homebase \
 
 API 支持可选的 Bearer Token 鉴权：设置 `API_TOKEN` 环境变量，或在仓库根目录放一个 `.api-token`
 文件；之后所有 `/api/*` 请求都需要 `Authorization: Bearer <token>` 头（`/api/health` 保持公开供监控）。
-不配置 token 则 API 完全开放（本地开发模式）。
-
-前端自动适配：首次收到 `401` 时会弹窗要求输入 token，存入 `localStorage` 后自动重试。
+不配置 token 则 API 完全开放（当前默认）。
 
 ## 测试
 
