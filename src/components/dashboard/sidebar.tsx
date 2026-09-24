@@ -26,7 +26,6 @@ export function Sidebar({
           </div>
           <div>
             <div className="text-sm font-bold tracking-[-0.01em] text-ink">HomeBase</div>
-            <div className="mono text-[10px] text-ink-faint">v2.4.1</div>
           </div>
         </div>
       </div>
