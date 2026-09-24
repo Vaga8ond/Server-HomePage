@@ -1,0 +1,13 @@
+{
+  "name": "HomeBase",
+  "short_name": "HomeBase",
+  "description": "Self-hosted server homepage — services, monitoring, storage, network",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f0f2f8",
+  "theme_color": "#f0f2f8",
+  "icons": [
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

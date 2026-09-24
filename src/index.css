@@ -328,3 +328,32 @@
 .recharts-surface {
   overflow: visible;
 }
+
+/* Mobile: sidebar becomes a slim top bar (icons + labels, horizontally scrollable).
+   Kept at top level — outside @layer components — so it always applies. */
+@media (max-width: 768px) {
+  .sidebar {
+    inset: 0 0 auto 0;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    border-right: none;
+    border-bottom: 1px solid var(--glass-border);
+    overflow-x: auto;
+  }
+  .layout {
+    margin-left: 0;
+    padding-top: 52px;
+  }
+  .brand {
+    padding: 0 10px 0 0;
+    border-bottom: none;
+    border-right: 1px solid var(--line);
+  }
+  .nav-item {
+    flex-shrink: 0;
+    padding: 7px 10px;
+  }
+}
