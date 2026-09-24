@@ -50,7 +50,7 @@ import type { IconNode } from "lucide"
 
 /** iconKey → lucide icon. Unknown keys fall back to Container. Keep in sync
  *  with the list in README.md (服务目录 · iconKey). */
-export const SERVICE_ICONS: Record<string, IconNode> = {
+const SERVICE_ICONS: Record<string, IconNode> = {
   // Media & content
   images: Images,
   image: Image,

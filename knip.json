@@ -1,0 +1,13 @@
+{
+  "workspaces": {
+    ".": {
+      "entry": ["index.html"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "backend": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
+  "ignoreBinaries": ["route", "netstat", "vm_stat"]
+}
