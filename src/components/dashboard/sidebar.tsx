@@ -2,8 +2,6 @@ import { Palette } from "lucide"
 import { MorphIcon } from "morphicons/react"
 
 import { NAV_ITEMS } from "@/lib/data"
-import { fetchHost } from "@/lib/api"
-import { usePoll } from "@/lib/use-poll"
 
 export function Sidebar({
   activeNav,
@@ -12,10 +10,6 @@ export function Sidebar({
   activeNav: string
   onNavChange: (id: string) => void
 }) {
-  // Slow poll just for the host identity shown in the footer.
-  const { data: host } = usePoll(fetchHost, 30_000)
-  const hostname = host?.hostInfo?.hostname ?? "connecting…"
-
   return (
     <aside className="sidebar">
       {/* Brand */}
@@ -59,20 +53,6 @@ export function Sidebar({
           Design
         </div>
       </nav>
-
-      {/* User footer */}
-      <div className="border-t border-line px-3 py-3.5">
-        <div className="glass-card-sm flex items-center gap-2.5 px-3 py-2.5">
-          <div className="flex size-[30px] items-center justify-center rounded-lg bg-gradient-to-br from-violet-glow to-cyan-glow text-xs font-bold text-white">
-            AD
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-semibold text-ink">admin</div>
-            <div className="mono text-[10px] text-ink-faint">root@{hostname}</div>
-          </div>
-          <span className="size-[7px] shrink-0 rounded-full bg-green-glow shadow-[0_0_6px_#22C55E]" />
-        </div>
-      </div>
     </aside>
   )
 }
