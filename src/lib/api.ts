@@ -107,6 +107,38 @@ export async function fetchHost(): Promise<HostMetrics> {
   return (await res.json()) as HostMetrics
 }
 
+export interface DeviceFsEntry {
+  mount: string
+  device: string
+  fstype: string
+  total: number
+  used: number
+  free: number
+  percent: number
+}
+
+export interface DeviceStatus {
+  id: string
+  name: string
+  host: string
+  url: string | null
+  online: boolean
+  cpuPercent: number | null
+  memPercent: number | null
+  memUsed: number | null
+  memTotal: number | null
+  temperatureC: number | null
+  loadOne: number | null
+  uptimeSeconds: number | null
+  filesystems: DeviceFsEntry[]
+}
+
+export async function fetchDevices(): Promise<DeviceStatus[]> {
+  const res = await fetch(`${API}/devices`)
+  if (!res.ok) throw new Error(`devices ${res.status}`)
+  return (await res.json()) as DeviceStatus[]
+}
+
 export async function fetchServices(): Promise<ApiService[]> {
   const res = await fetch(`${API}/services`)
   if (!res.ok) throw new Error(`services ${res.status}`)

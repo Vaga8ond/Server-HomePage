@@ -17,6 +17,7 @@ import { getSnapshot, startSampler } from "./metrics"
 import { probeAll } from "./probe"
 import { startRecorder } from "./recorder"
 import { defaultInterface, listInterfaces } from "./network"
+import { pollDevices } from "./devices"
 import { listMounts } from "./storage"
 import type { ContainerAction } from "./types"
 
@@ -61,6 +62,7 @@ const MIME: Record<string, string> = {
 
 app.get("/api/health", (c) => c.json({ ok: true, ts: Date.now() }))
 app.get("/api/host", (c) => c.json(getSnapshot()))
+app.get("/api/devices", async (c) => c.json(await pollDevices()))
 
 app.get("/api/services", async (c) => {
   const manual = readServices()

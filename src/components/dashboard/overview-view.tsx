@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { GaugeBar } from "@/components/dashboard/gauge-bar"
+import { DeviceCard } from "@/components/dashboard/device-card"
 import { KpiCard } from "@/components/dashboard/kpi-card"
 import { chartColors } from "@/components/dashboard/charts/chart-tooltip"
 import { PageHeader } from "@/components/dashboard/page-header"
@@ -12,9 +13,11 @@ import { TrafficHeatmap } from "@/components/dashboard/charts/traffic-heatmap"
 import { WeeklyBarChart } from "@/components/dashboard/charts/weekly-bar-chart"
 import { GAUGE_DEFS, STAT_DEFS, type GaugeKey, type StatKey } from "@/lib/data"
 import {
+  fetchDevices,
   fetchHistory,
   fetchHistoryAggregate,
   fetchHost,
+  type DeviceStatus,
   type HistoryAggregate,
   type HistoryPoint,
   type HistorySeries,
@@ -26,6 +29,7 @@ import { formatDuration, formatNumber } from "@/lib/format"
 
 export function OverviewView() {
   const { data: host } = usePoll<HostMetrics>(fetchHost, 5000)
+  const { data: devices } = usePoll<DeviceStatus[]>(fetchDevices, 5000)
   const sub = host?.hostInfo
     ? `homeserver · ${host.hostInfo.hostname ?? "?"} · ${host.hostInfo.os ?? ""}`.replace(/ · $/, "")
     : "homeserver"
@@ -127,6 +131,18 @@ export function OverviewView() {
           <KpiCard key={kpi.label} {...kpi} />
         ))}
       </div>
+
+      {/* External devices (NAS etc.) — hidden when devices.json is empty */}
+      {devices && devices.length > 0 && (
+        <div className="mb-7">
+          <SectionTitle>Devices</SectionTitle>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
+            {devices.map((d) => (
+              <DeviceCard key={d.id} d={d} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Storage + history placeholder */}
       <div className="mb-8">

@@ -15,8 +15,10 @@ import { PageHeader } from "@/components/dashboard/page-header"
 import { SectionTitle } from "@/components/dashboard/section-title"
 import { StatCard } from "@/components/dashboard/stat-card"
 import {
+  fetchDevices,
   fetchHistory,
   fetchStorage,
+  type DeviceStatus,
   type HistorySeries,
   type StorageMount,
 } from "@/lib/api"
@@ -25,6 +27,7 @@ import { usePoll } from "@/lib/use-poll"
 
 export function StorageView() {
   const { data: storage } = usePoll(fetchStorage, 15_000)
+  const { data: extDevices } = usePoll<DeviceStatus[]>(fetchDevices, 15_000)
   const { data: hist } = usePoll<HistorySeries>(() => fetchHistory("24h"), 60_000)
   const mounts = storage?.mounts ?? []
 
@@ -163,6 +166,33 @@ export function StorageView() {
           mounts.map((m, i) => <MountRow key={`${m.device}${m.mount}`} m={m} last={i === mounts.length - 1} />)
         )}
       </div>
+
+      {/* External device volumes (NAS) — MountRow reused verbatim */}
+      {(extDevices ?? [])
+        .filter((d) => d.online)
+        .map((d) => (
+          <div key={d.id} className="mt-8">
+            <SectionTitle>
+              {d.name} · {d.host} · {d.filesystems.length} volume
+              {d.filesystems.length === 1 ? "" : "s"}
+            </SectionTitle>
+            <div className="glass-card overflow-hidden p-0">
+              {d.filesystems.length === 0 ? (
+                <div className="px-5 py-8 text-center text-xs text-ink-faint">
+                  no volumes reported by glances
+                </div>
+              ) : (
+                d.filesystems.map((m, i) => (
+                  <MountRow
+                    key={`${d.id}${m.mount}`}
+                    m={m}
+                    last={i === d.filesystems.length - 1}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        ))}
     </>
   )
 }
