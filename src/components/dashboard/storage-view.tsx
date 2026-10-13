@@ -9,7 +9,13 @@ import {
   YAxis,
 } from "recharts"
 
-import { DiskDonutChart } from "@/components/dashboard/charts/disk-donut-chart"
+import { lazy, Suspense } from "react"
+
+const DiskDonutChart = lazy(() =>
+  import("@/components/dashboard/charts/disk-donut-chart").then((m) => ({
+    default: m.DiskDonutChart,
+  })),
+)
 import { ChartTooltip, chartColors } from "@/components/dashboard/charts/chart-tooltip"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { SectionTitle } from "@/components/dashboard/section-title"
@@ -90,7 +96,9 @@ export function StorageView() {
               {root ? root.device : "root filesystem"}
             </div>
           </div>
-          <DiskDonutChart used={root?.used ?? 0} total={root?.total ?? 0} />
+          <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+            <DiskDonutChart used={root?.used ?? 0} total={root?.total ?? 0} />
+          </Suspense>
         </div>
 
         <div className="glass-card flex flex-col px-[22px] pb-4 pt-[22px]">

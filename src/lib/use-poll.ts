@@ -25,6 +25,12 @@ export function usePoll<T>(
 
   const run = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
+    // Tab hidden (or phone locked): skip the fetch entirely and re-check
+    // shortly — visibilitychange fires run() the moment we're visible again.
+    if (typeof document !== "undefined" && document.hidden) {
+      timerRef.current = setTimeout(run, 2000)
+      return
+    }
     ;(async () => {
       try {
         const value = await fetcherRef.current()
@@ -40,7 +46,12 @@ export function usePoll<T>(
 
   useEffect(() => {
     run()
+    const onVisibility = () => {
+      if (!document.hidden) run()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
     return () => {
+      document.removeEventListener("visibilitychange", onVisibility)
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   }, [run])

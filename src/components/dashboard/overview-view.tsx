@@ -7,10 +7,25 @@ import { chartColors } from "@/components/dashboard/charts/chart-tooltip"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { SectionTitle } from "@/components/dashboard/section-title"
 import { StatCard } from "@/components/dashboard/stat-card"
-import { DiskDonutChart } from "@/components/dashboard/charts/disk-donut-chart"
-import { NetworkAreaChart } from "@/components/dashboard/charts/network-area-chart"
+import { lazy, Suspense } from "react"
+
+const DiskDonutChart = lazy(() =>
+  import("@/components/dashboard/charts/disk-donut-chart").then((m) => ({
+    default: m.DiskDonutChart,
+  })),
+)
+const NetworkAreaChart = lazy(() =>
+  import("@/components/dashboard/charts/network-area-chart").then((m) => ({
+    default: m.NetworkAreaChart,
+  })),
+)
 import { TrafficHeatmap } from "@/components/dashboard/charts/traffic-heatmap"
-import { WeeklyBarChart } from "@/components/dashboard/charts/weekly-bar-chart"
+
+const WeeklyBarChart = lazy(() =>
+  import("@/components/dashboard/charts/weekly-bar-chart").then((m) => ({
+    default: m.WeeklyBarChart,
+  })),
+)
 import { GAUGE_DEFS, STAT_DEFS, type GaugeKey, type StatKey } from "@/lib/data"
 import {
   fetchDevices,
@@ -153,21 +168,27 @@ export function OverviewView() {
               <div className="mb-0.5 text-sm font-semibold text-ink">Disk Usage</div>
               <div className="mono text-[11px] text-ink-faint">root filesystem</div>
             </div>
-            <DiskDonutChart
-              used={host?.disk?.used ?? 0}
-              total={host?.disk?.total ?? 0}
-            />
+            <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+              <DiskDonutChart
+                used={host?.disk?.used ?? 0}
+                total={host?.disk?.total ?? 0}
+              />
+            </Suspense>
           </div>
-          <NetworkAreaChart
-            points={hist?.points ?? []}
-            window={win}
-            onWindow={setWin}
-            loading={histLoading}
-          />
+          <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+            <NetworkAreaChart
+              points={hist?.points ?? []}
+              window={win}
+              onWindow={setWin}
+              loading={histLoading}
+            />
+          </Suspense>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <WeeklyBarChart weekly={agg?.weekly ?? []} />
+          <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+            <WeeklyBarChart weekly={agg?.weekly ?? []} />
+          </Suspense>
           <TrafficHeatmap heatmap={agg?.heatmap ?? []} maxMbps={agg?.maxMbps ?? 0} />
         </div>
       </div>
