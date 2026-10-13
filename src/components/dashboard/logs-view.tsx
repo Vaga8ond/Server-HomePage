@@ -179,6 +179,7 @@ export function LogsView() {
           <button
             type="button"
             onClick={refresh}
+            aria-label="Refresh logs"
             className="ml-auto flex size-7 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink"
             title="Refresh"
           >

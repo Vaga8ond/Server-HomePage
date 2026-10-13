@@ -77,6 +77,7 @@ export function ContainersView() {
               <button
                 type="button"
                 onClick={() => setLogName(null)}
+                aria-label="Close logs"
                 className="flex size-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink"
               >
                 <MorphIcon icon={X} size={16} />

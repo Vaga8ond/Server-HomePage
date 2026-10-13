@@ -100,9 +100,44 @@ export interface NetInterface {
 }
 
 const API = "/api"
+const TOKEN_KEY = "hb-api-token"
+
+/** Bearer token persisted in localStorage — entered once in the token gate. */
+export function getToken(): string {
+  try {
+    return localStorage.getItem(TOKEN_KEY) ?? ""
+  } catch {
+    return ""
+  }
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token.trim())
+}
+
+let onUnauthorized: (() => void) | null = null
+/** App registers a callback — any 401 flips the UI into the token gate. */
+export function setOnUnauthorized(fn: () => void): void {
+  onUnauthorized = fn
+}
+
+async function request(path: string, init?: { method?: string }): Promise<Response> {
+  const token = getToken()
+  const res = await fetch(`${API}${path}`, {
+    ...init,
+    headers: {
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+  })
+  if (res.status === 401) {
+    onUnauthorized?.()
+    throw new Error("unauthorized")
+  }
+  return res
+}
 
 export async function fetchHost(): Promise<HostMetrics> {
-  const res = await fetch(`${API}/host`)
+  const res = await request("/host")
   if (!res.ok) throw new Error(`host ${res.status}`)
   return (await res.json()) as HostMetrics
 }
@@ -134,19 +169,19 @@ export interface DeviceStatus {
 }
 
 export async function fetchDevices(): Promise<DeviceStatus[]> {
-  const res = await fetch(`${API}/devices`)
+  const res = await request("/devices")
   if (!res.ok) throw new Error(`devices ${res.status}`)
   return (await res.json()) as DeviceStatus[]
 }
 
 export async function fetchServices(): Promise<ApiService[]> {
-  const res = await fetch(`${API}/services`)
+  const res = await request("/services")
   if (!res.ok) throw new Error(`services ${res.status}`)
   return (await res.json()) as ApiService[]
 }
 
 export async function fetchContainers(): Promise<ContainerInfo[]> {
-  const res = await fetch(`${API}/containers`)
+  const res = await request("/containers")
   if (!res.ok) throw new Error(`containers ${res.status}`)
   return (await res.json()) as ContainerInfo[]
 }
@@ -155,26 +190,27 @@ export async function controlContainer(
   name: string,
   action: ContainerAction,
 ): Promise<void> {
-  const res = await fetch(`${API}/containers/${encodeURIComponent(name)}/${action}`, {
-    method: "POST",
-  })
+  const res = await request(
+    `/containers/${encodeURIComponent(name)}/${action}`,
+    { method: "POST" },
+  )
   if (!res.ok) throw new Error(`control ${res.status}`)
 }
 
 export async function fetchHistory(window: HistoryWindow): Promise<HistorySeries> {
-  const res = await fetch(`${API}/history?window=${window}`)
+  const res = await request(`/history?window=${window}`)
   if (!res.ok) throw new Error(`history ${res.status}`)
   return (await res.json()) as HistorySeries
 }
 
 export async function fetchHistoryAggregate(): Promise<HistoryAggregate> {
-  const res = await fetch(`${API}/history/aggregate`)
+  const res = await request("/history/aggregate")
   if (!res.ok) throw new Error(`history aggregate ${res.status}`)
   return (await res.json()) as HistoryAggregate
 }
 
 export async function fetchStorage(): Promise<{ mounts: StorageMount[] }> {
-  const res = await fetch(`${API}/storage`)
+  const res = await request("/storage")
   if (!res.ok) throw new Error(`storage ${res.status}`)
   return (await res.json()) as { mounts: StorageMount[] }
 }
@@ -183,7 +219,7 @@ export async function fetchNetwork(): Promise<{
   defaultInterface: string | null
   interfaces: NetInterface[]
 }> {
-  const res = await fetch(`${API}/network`)
+  const res = await request("/network")
   if (!res.ok) throw new Error(`network ${res.status}`)
   return (await res.json()) as {
     defaultInterface: string | null
@@ -192,7 +228,7 @@ export async function fetchNetwork(): Promise<{
 }
 
 export async function fetchContainerLogs(name: string): Promise<string> {
-  const res = await fetch(`${API}/containers/${encodeURIComponent(name)}/logs`)
+  const res = await request(`/containers/${encodeURIComponent(name)}/logs`)
   if (!res.ok) throw new Error(`logs ${res.status}`)
   const body = (await res.json()) as { text: string }
   return body.text

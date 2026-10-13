@@ -22,16 +22,21 @@ const NetworkView = lazy(() =>
 const StorageView = lazy(() =>
   import("@/components/dashboard/storage-view").then((m) => ({ default: m.StorageView })),
 )
-import { fetchServices, type ApiService } from "@/lib/api"
+import { fetchServices, setOnUnauthorized, type ApiService } from "@/lib/api"
 import { NAV_ITEMS } from "@/lib/data"
 import { usePoll } from "@/lib/use-poll"
 import { useTheme } from "@/lib/use-theme"
+import { TokenGate } from "@/components/token-gate"
 
 export default function App() {
   const { isDark, toggle } = useTheme()
   const [activeNav, setActiveNav, dir] = useHashRoute()
+  const [authFailed, setAuthFailed] = useState(false)
+  useEffect(() => setOnUnauthorized(() => setAuthFailed(true)), [])
   const { data: services, error, loading, refetch } = usePoll(fetchServices, 5000)
   const serviceList = services ?? []
+
+  if (authFailed) return <TokenGate />
 
   return (
     <div className="min-h-svh bg-canvas">
