@@ -5,6 +5,8 @@ interface PollState<T> {
   error: Error | null
   loading: boolean
   refetch: () => void
+  /** Timestamp of the last successful fetch (null until the first one). */
+  lastOk: number | null
 }
 
 /**
@@ -19,6 +21,7 @@ export function usePoll<T>(
 ): PollState<T> {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<Error | null>(null)
+  const [lastOk, setLastOk] = useState<number | null>(null)
   const fetcherRef = useRef(fetcher)
   fetcherRef.current = fetcher
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -36,6 +39,7 @@ export function usePoll<T>(
         const value = await fetcherRef.current()
         setData(value)
         setError(null)
+        setLastOk(Date.now())
       } catch (err) {
         setError(err instanceof Error ? err : new Error(String(err)))
       } finally {
@@ -56,5 +60,5 @@ export function usePoll<T>(
     }
   }, [run])
 
-  return { data, error, loading: data === null && error === null, refetch: run }
+  return { data, error, loading: data === null && error === null, refetch: run, lastOk }
 }

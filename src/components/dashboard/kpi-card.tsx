@@ -8,6 +8,8 @@ export interface KpiCardProps {
   spark?: (number | null)[]
   /** Percent change vs 24h ago; null renders nothing (still accumulating). */
   delta?: number | null
+  /** Hash route to open when the card is clicked; absent → not clickable. */
+  to?: string
 }
 
 /** Hand-rolled sparkline — replaced the recharts <AreaChart> so recharts is
@@ -57,13 +59,24 @@ function Sparkline({ values, color, gid }: { values: (number | null)[]; color?: 
   )
 }
 
-export function KpiCard({ label, value, unit, color, spark, delta }: KpiCardProps) {
+export function KpiCard({ label, value, unit, color, spark, delta, to }: KpiCardProps) {
   const hasSpark = !!spark && spark.length > 1 && spark.some((v) => v != null)
   const gid = `kpi-${label.replace(/\W+/g, "")}`
   const up = (delta ?? 0) >= 0
 
+  const nav = to
+    ? () => {
+        window.location.hash = to
+      }
+    : undefined
+
   return (
-    <div className="glass-card flex flex-1 flex-col p-[22px]">
+    <div
+      className={`glass-card flex flex-1 flex-col p-[22px] ${to ? "cursor-pointer transition-colors hover:border-cyan-glow/25" : ""}`}
+      onClick={nav}
+      title={to ? `Open ${to.replace("#/", "")}` : undefined}
+      {...(to ? { role: "link", tabIndex: 0, onKeyDown: (e) => e.key === "Enter" && nav?.() } : {})}
+    >
       <div className="mb-2 text-[12px] font-medium uppercase tracking-[0.04em] text-ink-soft">
         {label}
       </div>

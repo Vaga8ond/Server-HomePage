@@ -5,6 +5,7 @@ import { DeviceCard } from "@/components/dashboard/device-card"
 import { KpiCard } from "@/components/dashboard/kpi-card"
 import { chartColors } from "@/components/dashboard/charts/chart-tooltip"
 import { PageHeader } from "@/components/dashboard/page-header"
+import { HealthStrip } from "@/components/dashboard/health-strip"
 import { SectionTitle } from "@/components/dashboard/section-title"
 import { StatCard } from "@/components/dashboard/stat-card"
 import { lazy, Suspense } from "react"
@@ -21,6 +22,12 @@ const NetworkAreaChart = lazy(() =>
 )
 import { TrafficHeatmap } from "@/components/dashboard/charts/traffic-heatmap"
 
+const EventsTimeline = lazy(() =>
+  import("@/components/dashboard/events-timeline").then((m) => ({
+    default: m.EventsTimeline,
+  })),
+)
+
 const WeeklyBarChart = lazy(() =>
   import("@/components/dashboard/charts/weekly-bar-chart").then((m) => ({
     default: m.WeeklyBarChart,
@@ -36,26 +43,34 @@ import {
   type HistoryAggregate,
   type HistoryPoint,
   type HistorySeries,
-  type HistoryWindow,
+  type SeriesWindow,
   type HostMetrics,
 } from "@/lib/api"
+import { diskPct } from "@/lib/health"
 import { usePoll } from "@/lib/use-poll"
 import { formatDuration, formatNumber } from "@/lib/format"
 
 export function OverviewView() {
-  const { data: host } = usePoll<HostMetrics>(fetchHost, 5000)
+  const { data: host, error: hostErr, lastOk } = usePoll<HostMetrics>(fetchHost, 5000)
   const { data: devices } = usePoll<DeviceStatus[]>(fetchDevices, 5000)
   const sub = host?.hostInfo
     ? `homeserver · ${host.hostInfo.hostname ?? "?"} · ${host.hostInfo.os ?? ""}`.replace(/ · $/, "")
     : "homeserver"
 
   // History charts: Prometheus-free, fed by the backend recorder.
-  const [win, setWin] = useState<HistoryWindow>("24h")
+  const [win, setWin] = useState<SeriesWindow>("24h")
+  const [range, setRange] = useState<{ from: number; to: number } | null>(null)
   const {
     data: hist,
     loading: histLoading,
     refetch: refetchHist,
-  } = usePoll<HistorySeries>(() => fetchHistory(win), 60_000)
+  } = usePoll<HistorySeries>(
+    () =>
+      win === "custom"
+        ? fetchHistory("custom", range ?? { from: Date.now() - 86_400_000, to: Date.now() })
+        : fetchHistory(win),
+    60_000,
+  )
   const { data: agg } = usePoll<HistoryAggregate>(fetchHistoryAggregate, 60_000)
 
   // KPI cards always show a 24h window, independent of the chart toggle.
@@ -98,8 +113,8 @@ export function OverviewView() {
     p.rx != null || p.tx != null ? ((p.rx ?? 0) + (p.tx ?? 0)) / 1e6 : null
 
   useEffect(() => {
-    refetchHist() // window switch → immediate refetch
-  }, [win, refetchHist])
+    refetchHist() // window/range switch → immediate refetch
+  }, [win, range, refetchHist])
 
   const cc = chartColors()
   const kpis = [
@@ -112,6 +127,7 @@ export function OverviewView() {
       color: cc.cyan,
       spark: sparkOf(netOf),
       delta: deltaOf(netOf),
+      to: "#/network",
     },
     {
       label: "CPU",
@@ -120,6 +136,7 @@ export function OverviewView() {
       color: cc.violet,
       spark: sparkOf((p) => p.cpu),
       delta: deltaOf((p) => p.cpu),
+      to: "#/monitoring",
     },
     {
       label: "Memory",
@@ -128,6 +145,16 @@ export function OverviewView() {
       color: cc.green,
       spark: sparkOf((p) => p.mem),
       delta: deltaOf((p) => p.mem),
+      to: "#/monitoring",
+    },
+    {
+      label: "Disk",
+      value: diskPct(host) != null ? diskPct(host)!.toFixed(0) : "—",
+      unit: "%",
+      color: cc.orange,
+      spark: sparkOf((p) => p.disk),
+      delta: deltaOf((p) => p.disk),
+      to: "#/storage",
     },
     {
       label: "Uptime",
@@ -138,7 +165,12 @@ export function OverviewView() {
 
   return (
     <>
-      <PageHeader title="Overview" subtitle={sub} />
+      <PageHeader title="Overview" subtitle={sub}>
+        <FreshnessChip lastOk={lastOk} error={hostErr} intervalMs={5000} />
+      </PageHeader>
+
+      {/* Health strip — one glance: is everything fine? */}
+      <HealthStrip host={host} />
 
       {/* KPI row */}
       <div className="mb-7 flex flex-wrap gap-4">
@@ -179,7 +211,12 @@ export function OverviewView() {
             <NetworkAreaChart
               points={hist?.points ?? []}
               window={win}
-              onWindow={setWin}
+              range={range ?? undefined}
+              onWindow={(w) => {
+                setWin(w)
+                if (w !== "custom") setRange(null)
+              }}
+              onRange={(from, to) => setRange({ from, to })}
               loading={histLoading}
             />
           </Suspense>
@@ -191,6 +228,14 @@ export function OverviewView() {
           </Suspense>
           <TrafficHeatmap heatmap={agg?.heatmap ?? []} maxMbps={agg?.maxMbps ?? 0} />
         </div>
+      </div>
+
+      {/* Container events timeline */}
+      <div className="mb-8">
+        <SectionTitle>Container Events</SectionTitle>
+        <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+          <EventsTimeline />
+        </Suspense>
       </div>
 
       {/* System monitor */}
@@ -225,6 +270,41 @@ export function OverviewView() {
 
 function avg(xs: number[]): number {
   return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0
+}
+
+/** "updated Ns ago" chip; turns yellow “stale” when polls keep failing or the
+ *  last success is older than 3× the interval (hidden until first success). */
+function FreshnessChip({
+  lastOk,
+  error,
+  intervalMs,
+}: {
+  lastOk: number | null
+  error: Error | null
+  intervalMs: number
+}) {
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((x) => x + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  if (lastOk == null) return null
+  const ageS = Math.floor((Date.now() - lastOk) / 1000)
+  const stale = error != null || ageS * 1000 > intervalMs * 3
+  return (
+    <span
+      className={`mono flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${
+        stale
+          ? "border-amber-glow/25 bg-amber-glow/10 text-amber-glow"
+          : "border-line text-ink-faint"
+      }`}
+    >
+      <span
+        className={`size-1.5 rounded-full ${stale ? "bg-amber-glow" : "bg-green-glow"}`}
+      />
+      {stale ? `stale · ${ageS}s` : `updated ${Math.max(0, ageS)}s ago`}
+    </span>
+  )
 }
 
 function gaugeFor(host: HostMetrics | null, key: GaugeKey) {
