@@ -46,7 +46,32 @@ export interface ContainerInfo {
 
 export type ContainerAction = "start" | "stop" | "restart"
 
+export type UptimeWindow = "24h" | "7d"
+
+export interface UptimeCell {
+  t: number
+  /** running / total probes in the cell; null = no probes (unknown). */
+  ratio: number | null
+  latencyMs: number | null
+}
+
+export interface ServiceUptime {
+  name: string
+  uptimePct: number | null
+  cells: UptimeCell[]
+}
+
+export interface UptimeSeries {
+  window: UptimeWindow
+  stepMs: number
+  from: number
+  to: number
+  services: ServiceUptime[]
+}
+
 export type HistoryWindow = "1h" | "6h" | "24h" | "7d"
+/** Preset windows plus arbitrary from/to ranges resolved by the backend. */
+export type SeriesWindow = HistoryWindow | "custom"
 
 export interface HistoryPoint {
   t: number
@@ -61,7 +86,7 @@ export interface HistoryPoint {
 }
 
 export interface HistorySeries {
-  window: HistoryWindow
+  window: SeriesWindow
   stepMs: number
   from: number
   to: number
@@ -180,6 +205,17 @@ export async function fetchServices(): Promise<ApiService[]> {
   return (await res.json()) as ApiService[]
 }
 
+export interface ComposeProject {
+  project: string
+  containers: string[]
+}
+
+export async function fetchComposeProjects(): Promise<ComposeProject[]> {
+  const res = await request(`/compose-projects`)
+  if (!res.ok) throw new Error(`compose-projects ${res.status}`)
+  return (await res.json()) as ComposeProject[]
+}
+
 export async function fetchContainers(): Promise<ContainerInfo[]> {
   const res = await request("/containers")
   if (!res.ok) throw new Error(`containers ${res.status}`)
@@ -197,8 +233,12 @@ export async function controlContainer(
   if (!res.ok) throw new Error(`control ${res.status}`)
 }
 
-export async function fetchHistory(window: HistoryWindow): Promise<HistorySeries> {
-  const res = await request(`/history?window=${window}`)
+export async function fetchHistory(
+  window: HistoryWindow | "custom",
+  range?: { from: number; to: number },
+): Promise<HistorySeries> {
+  const qs = range ? `&from=${range.from}&to=${range.to}` : ""
+  const res = await request(`/history?window=${window}${qs}`)
   if (!res.ok) throw new Error(`history ${res.status}`)
   return (await res.json()) as HistorySeries
 }
@@ -207,6 +247,25 @@ export async function fetchHistoryAggregate(): Promise<HistoryAggregate> {
   const res = await request("/history/aggregate")
   if (!res.ok) throw new Error(`history aggregate ${res.status}`)
   return (await res.json()) as HistoryAggregate
+}
+
+export async function fetchUptime(window: UptimeWindow): Promise<UptimeSeries> {
+  const res = await request(`/uptime?window=${window}`)
+  if (!res.ok) throw new Error(`uptime ${res.status}`)
+  return (await res.json()) as UptimeSeries
+}
+
+export interface ContainerEvent {
+  t: number
+  container: string
+  action: string
+  detail: string | null
+}
+
+export async function fetchEvents(hours = 24): Promise<{ events: ContainerEvent[] }> {
+  const res = await request(`/events?hours=${hours}`)
+  if (!res.ok) throw new Error(`events ${res.status}`)
+  return (await res.json()) as { events: ContainerEvent[] }
 }
 
 export async function fetchStorage(): Promise<{ mounts: StorageMount[] }> {
@@ -227,8 +286,20 @@ export async function fetchNetwork(): Promise<{
   }
 }
 
-export async function fetchContainerLogs(name: string): Promise<string> {
-  const res = await request(`/containers/${encodeURIComponent(name)}/logs`)
+export async function fetchContainerLogs(
+  name: string,
+  tail = 500,
+  range?: { kind: "1h" | "24h" | "custom"; from?: string; to?: string },
+): Promise<string> {
+  const params = new URLSearchParams({ tail: String(tail) })
+  if (range) {
+    params.set("since", range.kind)
+    if (range.from) params.set("from", range.from)
+    if (range.to) params.set("to", range.to)
+  }
+  const res = await request(
+    `/containers/${encodeURIComponent(name)}/logs?${params}`,
+  )
   if (!res.ok) throw new Error(`logs ${res.status}`)
   const body = (await res.json()) as { text: string }
   return body.text
