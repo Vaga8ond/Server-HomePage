@@ -45,6 +45,51 @@ describe("querySeries", () => {
   })
 })
 
+describe("custom range", () => {
+  it("derives a ~300-bucket step snapped to the 15s grid", () => {
+    // 10h → 36_000s/300 = 120s exactly, already a 15s multiple
+    const r = history.resolveCustomRange(now - 10 * 3_600_000, now)
+    expect(r).not.toBeNull()
+    expect(r!.step).toBe(120_000)
+    // short spans floor at one sample
+    expect(history.resolveCustomRange(now - 3_600_000, now)!.step).toBe(15_000)
+    expect(history.resolveCustomRange(now - 2 * 3_600_000, now)!.step).toBe(30_000)
+  })
+
+  it("rejects non-finite or empty ranges", () => {
+    expect(history.resolveCustomRange(NaN, now)).toBeNull()
+    expect(history.resolveCustomRange(now, now)).toBeNull()
+    expect(history.resolveCustomRange(now, now - 1)).toBeNull()
+  })
+
+  it("clamps to now and the 30d retention horizon", () => {
+    const future = history.resolveCustomRange(now - 3_600_000, now + 86_400_000)!
+    expect(future.to).toBeLessThanOrEqual(Date.now())
+    const old = history.resolveCustomRange(now - 60 * 86_400_000, now)!
+    expect(old.to - old.from).toBeLessThanOrEqual(30 * 86_400_000 + 1)
+    // 30d / 300 = 8_640s, already on the 15s grid
+    expect(old.step).toBe(8_640_000)
+  })
+
+  it("querySeries(custom) covers exactly [from, to)", () => {
+    // from nudged past the 2h-old fixture sample (cpu 999) — recent two only
+    const from = now - 2 * 3_600_000 + 60_000
+    const to = now
+    const s = history.querySeries("custom", { from, to })
+    expect(s.window).toBe("custom")
+    expect(s.points.length).toBe(Math.ceil((to - from) / s.stepMs))
+    expect(s.points[0].t).toBe(s.from)
+    const last = s.points[s.points.length - 1]
+    expect(last.t + s.stepMs).toBeLessThanOrEqual(to)
+    const withData = s.points.filter((x) => x.cpu != null)
+    expect(withData.map((x) => x.cpu).sort((a, b) => a! - b!)).toEqual([10, 30])
+  })
+
+  it("querySeries(custom) without a usable range throws", () => {
+    expect(() => history.querySeries("custom")).toThrow(RangeError)
+  })
+})
+
 describe("queryAggregate", () => {
   it("converts rate samples to per-day GB totals via SAMPLE_SEC", () => {
     const agg = history.queryAggregate()

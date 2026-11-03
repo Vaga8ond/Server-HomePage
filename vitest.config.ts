@@ -1,9 +1,10 @@
 import { defineConfig } from "vitest/config"
 
-// Backend-only unit tests. Separate from vite.config.ts (frontend build).
+// Unit tests: backend (node) + frontend pure-function tests (node env too —
+// no DOM needed; component behavior is verified via tsc + build).
 export default defineConfig({
   test: {
-    include: ["backend/src/**/*.test.ts"],
+    include: ["backend/src/**/*.test.ts", "src/**/*.test.ts"],
     environment: "node",
   },
 })

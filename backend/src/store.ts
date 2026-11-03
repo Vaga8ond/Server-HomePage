@@ -64,6 +64,17 @@ db.exec(`
 `)
 db.exec("CREATE INDEX IF NOT EXISTS idx_probes_name_t ON probes(name, t)")
 
+// Container lifecycle events (docker-events stream → overview timeline).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    t         INTEGER NOT NULL,        -- epoch ms
+    container TEXT NOT NULL,
+    action    TEXT NOT NULL,           -- start | die | oom | health_status
+    detail    TEXT                     -- e.g. "health_status: healthy"
+  )
+`)
+db.exec("CREATE INDEX IF NOT EXISTS idx_events_t ON events(t)")
+
 const insertStmt = db.prepare(
   `INSERT INTO samples (t, cpu, mem, disk, rx, tx, load, tcp, temp)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -75,6 +86,20 @@ const insertProbeStmt = db.prepare(
   "INSERT INTO probes (t, name, status, latencyMs) VALUES (?, ?, ?, ?)",
 )
 const deleteProbesBeforeStmt = db.prepare("DELETE FROM probes WHERE t < ?")
+const insertEventStmt = db.prepare(
+  "INSERT INTO events (t, container, action, detail) VALUES (?, ?, ?, ?)",
+)
+const recentEventsStmt = db.prepare(
+  "SELECT t, container, action, detail FROM events WHERE t >= ? ORDER BY t DESC LIMIT 500",
+)
+const deleteEventsBeforeStmt = db.prepare("DELETE FROM events WHERE t < ?")
+
+export interface EventRow {
+  t: number
+  container: string
+  action: string
+  detail: string | null
+}
 
 export function insertSample(r: SampleRow): void {
   insertStmt.run(r.t, r.cpu, r.mem, r.disk, r.rx, r.tx, r.load, r.tcp, r.temp)
@@ -108,4 +133,22 @@ export function insertProbe(
 
 export function deleteProbesBefore(cutoffMs: number): void {
   deleteProbesBeforeStmt.run(cutoffMs)
+}
+
+export function insertEvent(
+  t: number,
+  container: string,
+  action: string,
+  detail: string | null,
+): void {
+  insertEventStmt.run(t, container, action, detail)
+}
+
+/** Newest-first container events since fromMs (capped — timeline only). */
+export function recentEvents(fromMs: number): EventRow[] {
+  return recentEventsStmt.all(fromMs) as unknown as EventRow[]
+}
+
+export function deleteEventsBefore(cutoffMs: number): void {
+  deleteEventsBeforeStmt.run(cutoffMs)
 }

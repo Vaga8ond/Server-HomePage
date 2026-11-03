@@ -1,6 +1,8 @@
 import { db, rowsSince } from "./store"
 
 export type HistoryWindow = "1h" | "6h" | "24h" | "7d"
+/** Preset windows plus arbitrary ranges resolved at query time. */
+export type SeriesWindow = HistoryWindow | "custom"
 
 const SAMPLE_SEC = 15 // recorder interval — converts rate samples into totals
 
@@ -21,7 +23,30 @@ const STEP_MS: Record<HistoryWindow, number> = {
 
 const KEYS = ["cpu", "mem", "disk", "rx", "tx", "load", "tcp", "temp"] as const
 const DAY_MS = 86_400_000
+const TARGET_BUCKETS = 300
+/** Retention horizon — custom ranges older than this clamp forward. */
+const MAX_SPAN_MS = 30 * DAY_MS
 type Key = (typeof KEYS)[number]
+
+/** Clamp a custom [from, to] (epoch ms) to what the store can actually answer
+ *  (to ≤ now, span ≤ 30d retention) and derive a ~300-bucket step snapped up
+ *  to the 15s sample grid. Null when the range is unusable (non-finite or
+ *  empty after clamping). */
+export function resolveCustomRange(
+  fromMs: number,
+  toMs: number,
+): { from: number; to: number; step: number } | null {
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return null
+  const to = Math.min(toMs, Date.now())
+  const from = Math.max(fromMs, to - MAX_SPAN_MS)
+  if (from >= to) return null
+  const sample = SAMPLE_SEC * 1000
+  const step = Math.max(
+    sample,
+    Math.ceil((to - from) / TARGET_BUCKETS / sample) * sample,
+  )
+  return { from, to, step }
+}
 
 export interface HistoryPoint {
   t: number
@@ -49,12 +74,21 @@ const bucketAvgStmt = db.prepare(`
 `)
 
 /** Downsampled time series for the area chart. */
-export function querySeries(window: HistoryWindow) {
-  const span = WINDOW_MS[window]
-  const step = STEP_MS[window]
-  const to = Date.now()
-  const from = to - span
-  const buckets = Math.ceil(span / step)
+export function querySeries(window: SeriesWindow, custom?: { from: number; to: number }) {
+  let from: number
+  let to: number
+  let step: number
+  if (window === "custom") {
+    const r = custom ? resolveCustomRange(custom.from, custom.to) : null
+    if (!r) throw new RangeError("invalid range")
+    ;({ from, to, step } = r)
+  } else {
+    const span = WINDOW_MS[window]
+    step = STEP_MS[window]
+    to = Date.now()
+    from = to - span
+  }
+  const buckets = Math.ceil((to - from) / step)
 
   const byBucket = new Map<number, Record<Key, number | null>>()
   for (const row of bucketAvgStmt.all(from, step) as unknown as Array<{ bucket: number } & Record<Key, number | null>>) {
