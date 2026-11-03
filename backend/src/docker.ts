@@ -180,16 +180,153 @@ function demuxBuffer(buf: Buffer): string {
 }
 
 /** Last `tail` log lines of a container, stdout+stderr combined. */
-export async function containerLogs(name: string, tail = 200): Promise<string> {
+export async function containerLogs(
+  name: string,
+  tail = 200,
+  since?: number, // unix seconds — docker filters lines after this instant
+): Promise<string> {
   const d = client()
   if (!d) throw new Error("docker socket unavailable")
-  // follow:false → dockerode resolves a Buffer of multiplexed stream frames.
+  // timestamps → RFC3339 prefix per line; the frontend peels it for the time
+  // column (multi-line stack-trace continuations stay timestampless).
   const buf = (await d.getContainer(name).logs({
     stdout: true,
     stderr: true,
     tail,
-    timestamps: false,
+    timestamps: true,
     follow: false,
+    ...(since ? { since } : {}),
   })) as unknown as Buffer
   return demuxBuffer(buf)
+}
+
+export interface ComposeProject {
+  project: string
+  containers: string[]
+}
+
+/** Derive a compose project name from a bare container name (label-less
+ *  fallback): compose names look like `<project>-<service>-<index>`. */
+function nameProject(rawName: string): string | undefined {
+  const m = /^\/(.+-[^-]+)-(\d+)$/.exec(rawName)
+  return m?.[1]
+}
+
+let projectsCache: { at: number; data: ComposeProject[] } | null = null
+const PROJECTS_CACHE_MS = 5000
+
+/** Running containers grouped by compose project (label first, name-pattern
+ *  fallback). Standalone containers have no project and are omitted. */
+export async function listComposeProjects(): Promise<ComposeProject[]> {
+  if (projectsCache && Date.now() - projectsCache.at < PROJECTS_CACHE_MS) {
+    return projectsCache.data
+  }
+  const d = client()
+  if (!d) throw new Error("docker socket unavailable")
+  const infos = await d.listContainers({ all: false })
+  const byProject = new Map<string, string[]>()
+  for (const info of infos) {
+    const name = (info.Names?.[0] ?? "").replace(/^\//, "")
+    if (!name) continue
+    const project =
+      (info.Labels ?? {})["com.docker.compose.project"] ?? nameProject(info.Names?.[0] ?? "")
+    if (!project) continue
+    const list = byProject.get(project) ?? []
+    list.push(name)
+    byProject.set(project, list)
+  }
+  const data = [...byProject.entries()]
+    .map(([project, containers]) => ({ project, containers: containers.sort() }))
+    .sort((a, b) => a.project.localeCompare(b.project))
+  projectsCache = { at: Date.now(), data }
+  return data
+}
+
+/**
+ * Follow several containers' logs at once, tagging each line with its
+ * container name (SSE merged-view source). Containers that vanish mid-open
+ * are skipped; a stream that ends (container stopped) just goes silent.
+ */
+export async function streamMergedLogs(
+  names: string[],
+  tail = 200,
+  onLine: (name: string, stream: "stdout" | "stderr", line: string) => void,
+): Promise<() => void> {
+  const cancels = await Promise.all(
+    names.map(async (n) => {
+      try {
+        return await streamContainerLogs(n, tail, (type, line) => onLine(n, type, line))
+      } catch {
+        return () => {} // container gone between list and logs — skip it
+      }
+    }),
+  )
+  return () => cancels.forEach((c) => c())
+}
+
+const STREAM_TYPE = (t: number): "stdout" | "stderr" => (t === 1 ? "stderr" : "stdout")
+
+/**
+ * Follow a container's log stream (SSE source). Calls `onLine` with each
+ * complete line; returns a cancel function that tears down the docker stream.
+ * Incremental variant of demuxBuffer: same 8-byte framing, tty-safe (a bad
+ * header falls back to raw passthrough), same ANSI stripping, same
+ * timestamps: true prefix contract as the snapshot endpoint.
+ */
+export async function streamContainerLogs(
+  name: string,
+  tail = 200,
+  onLine: (stream: "stdout" | "stderr", line: string) => void,
+): Promise<() => void> {
+  const d = client()
+  if (!d) throw new Error("docker socket unavailable")
+  const s = (await d.getContainer(name).logs({
+    stdout: true,
+    stderr: true,
+    tail,
+    timestamps: true,
+    follow: true,
+  })) as unknown as import("node:stream").Readable
+
+  let buf = Buffer.alloc(0)
+  let partial = "" // incomplete line carried across chunks
+  const pushText = (text: string) => {
+    partial += text
+    const lines = partial.split("\n")
+    partial = lines.pop() ?? ""
+    for (const l of lines) {
+      const clean = l.replace(/\u001b\[[0-9;]*[A-Za-z]/g, "")
+      if (clean.trim()) onLine("stdout", clean)
+    }
+  }
+  const onData = (chunk: Buffer) => {
+    buf = Buffer.concat([buf, chunk])
+    // tty passthrough: only when framing is definitively invalid (type byte
+    // out of range or the reserved 3 bytes non-zero) — partial frames wait.
+    if (buf.length >= 4 && (buf[0] > 2 || buf[1] !== 0 || buf[2] !== 0 || buf[3] !== 0)) {
+      pushText(buf.toString("utf8"))
+      buf = Buffer.alloc(0)
+      return
+    }
+    let off = 0
+    while (off + 8 <= buf.length) {
+      const size = buf.readUInt32BE(off + 4)
+      if (size >= 1 << 24) break // framing lost — stop, next chunk re-checks
+      if (off + 8 + size > buf.length) break
+      const type = STREAM_TYPE(buf[off])
+      pushText(buf.subarray(off + 8, off + 8 + size).toString("utf8"))
+      off += 8 + size
+    }
+    if (off > 0) buf = buf.subarray(off)
+  }
+  const onEnd = () => {
+    if (partial.trim()) onLine("stdout", partial)
+    partial = ""
+  }
+  s.on("data", onData)
+  s.on("end", onEnd)
+  s.on("error", () => {}) // docker closes abruptly — client reconnects
+  return () => {
+    s.destroy()
+  }
 }

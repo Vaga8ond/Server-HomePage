@@ -10,8 +10,17 @@ import {
   controlContainer,
   discoverServices,
   listContainers,
+  listComposeProjects,
+  streamContainerLogs,
+  streamMergedLogs,
 } from "./docker"
-import { queryAggregate, querySeries, type HistoryWindow } from "./history"
+import { startDockerEvents } from "./docker-events"
+import { recentEvents } from "./store"
+import {
+  queryAggregate,
+  querySeries,
+  type SeriesWindow,
+} from "./history"
 import { queryUptime, type UptimeWindow } from "./uptime"
 import { getSnapshot, startSampler } from "./metrics"
 import { probeAll } from "./probe"
@@ -23,6 +32,7 @@ import type { ContainerAction } from "./types"
 
 startSampler()
 startRecorder()
+startDockerEvents()
 
 export const app = new Hono()
 
@@ -34,7 +44,12 @@ if (API_TOKEN) {
   console.log("api auth: enabled")
   app.use("/api/*", async (c, next) => {
     if (c.req.path === "/api/health") return next()
-    if (c.req.header("authorization") !== `Bearer ${API_TOKEN}`) {
+    // ?token= query form exists solely for EventSource, which cannot set
+    // headers (SSE log stream); Authorization header is the primary form.
+    if (
+      c.req.header("authorization") !== `Bearer ${API_TOKEN}` &&
+      c.req.query("token") !== API_TOKEN
+    ) {
       return c.json({ error: "unauthorized" }, 401)
     }
     await next()
@@ -93,11 +108,23 @@ app.get("/api/services", async (c) => {
 
 app.get("/api/containers", async (c) => c.json(await listContainers()))
 
-const HISTORY_WINDOWS = new Set<HistoryWindow>(["1h", "6h", "24h", "7d"])
+const HISTORY_WINDOWS = new Set<SeriesWindow>(["1h", "6h", "24h", "7d", "custom"])
 
 app.get("/api/history", (c) => {
-  const w = c.req.query("window") as HistoryWindow
+  const w = c.req.query("window") as SeriesWindow
   if (!HISTORY_WINDOWS.has(w)) return c.json({ error: "invalid window" }, 400)
+  if (w === "custom") {
+    try {
+      return c.json(
+        querySeries("custom", {
+          from: Number(c.req.query("from")),
+          to: Number(c.req.query("to")),
+        }),
+      )
+    } catch {
+      return c.json({ error: "invalid range" }, 400)
+    }
+  }
   return c.json(querySeries(w))
 })
 
@@ -107,6 +134,12 @@ app.get("/api/uptime", (c) => {
   const w = c.req.query("window") as UptimeWindow
   if (!UPTIME_WINDOWS.has(w)) return c.json({ error: "invalid window" }, 400)
   return c.json(queryUptime(w))
+})
+
+app.get("/api/events", (c) => {
+  // Clamp 1h..30d; bad values fall back to the 24h default.
+  const hours = Math.min(Math.max(Number(c.req.query("hours")) || 24, 1), 720)
+  return c.json({ events: recentEvents(Date.now() - hours * 3_600_000) })
 })
 
 app.get("/api/history/aggregate", (c) => c.json(queryAggregate()))
@@ -119,12 +152,149 @@ app.get("/api/network", (c) =>
 
 app.get("/api/containers/:name/logs", async (c) => {
   const name = c.req.param("name")
+  // Clamp 50..5000; bad values fall back to the 500 default.
+  const tail = Math.min(Math.max(Number(c.req.query("tail")) || 500, 50), 5000)
+  // ?since=1h|24h|custom (+from/to, same semantics as /api/history custom) —
+  // invalid/missing pieces fall back to "no since filter" (tail only).
+  const now = Date.now()
+  let since: number | undefined
+  const spec = c.req.query("since")
+  if (spec === "1h") since = Math.floor((now - 3600_000) / 1000)
+  else if (spec === "24h") since = Math.floor((now - 24 * 3600_000) / 1000)
+  else if (spec === "custom") {
+    const from = Date.parse(c.req.query("from") ?? "")
+    if (!Number.isNaN(from)) since = Math.floor(from / 1000)
+  }
   try {
-    const text = await containerLogs(name, 200)
+    const text = await containerLogs(name, tail, since)
     return c.json({ name, text })
   } catch (err) {
     return c.json({ error: (err as Error).message }, 503)
   }
+})
+
+app.get("/api/containers/:name/logs/stream", (c) => {
+  const name = c.req.param("name")
+  const tail = Math.min(Math.max(Number(c.req.query("tail")) || 500, 50), 5000)
+  const encoder = new TextEncoder()
+  let cancel: (() => void) | null = null
+  let heartbeat: ReturnType<typeof setInterval> | null = null
+  const cleanup = () => {
+    if (heartbeat) clearInterval(heartbeat)
+    heartbeat = null
+    cancel?.()
+    cancel = null
+  }
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          )
+        } catch {
+          /* controller closed by cancel() */
+        }
+      }
+      // Client disconnect (fetch/EventSource abort) → tear everything down.
+      c.req.raw.signal.addEventListener("abort", cleanup)
+      try {
+        cancel = await streamContainerLogs(name, tail, (type, line) =>
+          send("line", { type, line }),
+        )
+        send("open", { name })
+        // Keep proxies from closing an idle stream; SSE comment frames are
+        // ignored by EventSource.
+        heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(": ping\n\n"))
+          } catch {
+            /* closed */
+          }
+        }, 30000)
+      } catch (err) {
+        send("error", { message: (err as Error).message })
+        cleanup()
+        controller.close()
+      }
+    },
+    cancel() {
+      cleanup()
+    },
+  })
+  return c.body(stream, 200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  })
+})
+
+app.get("/api/compose-projects", async (c) => {
+  try {
+    return c.json(await listComposeProjects())
+  } catch (err) {
+    return c.json({ error: (err as Error).message }, 503)
+  }
+})
+
+app.get("/api/logs/merged", (c) => {
+  const project = c.req.query("project") ?? ""
+  const tail = Math.min(Math.max(Number(c.req.query("tail")) || 500, 50), 5000)
+  const encoder = new TextEncoder()
+  let cancel: (() => void) | null = null
+  let heartbeat: ReturnType<typeof setInterval> | null = null
+  const cleanup = () => {
+    if (heartbeat) clearInterval(heartbeat)
+    heartbeat = null
+    cancel?.()
+    cancel = null
+  }
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          )
+        } catch {
+          /* controller closed */
+        }
+      }
+      c.req.raw.signal.addEventListener("abort", cleanup)
+      try {
+        const match = (await listComposeProjects()).find((p) => p.project === project)
+        if (!match || match.containers.length === 0) {
+          send("error", { message: `no running containers for project "${project}"` })
+          cleanup()
+          controller.close()
+          return
+        }
+        cancel = await streamMergedLogs(match.containers, tail, (name, type, line) =>
+          send("line", { name, type, line }),
+        )
+        send("open", { project, containers: match.containers })
+        heartbeat = setInterval(() => {
+          try {
+            controller.enqueue(encoder.encode(": ping\n\n"))
+          } catch {
+            /* closed */
+          }
+        }, 30000)
+      } catch (err) {
+        send("error", { message: (err as Error).message })
+        cleanup()
+        controller.close()
+      }
+    },
+    cancel() {
+      cleanup()
+    },
+  })
+  return c.body(stream, 200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  })
 })
 
 app.post("/api/containers/:name/:action", async (c) => {
