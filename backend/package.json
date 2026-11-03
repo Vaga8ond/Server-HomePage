@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "migrate:history": "tsx src/migrate-history.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

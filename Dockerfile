@@ -46,4 +46,6 @@ ENV PORT=8088 \
     HOST_FS=/hostfs
 EXPOSE 8088
 USER 10001
-CMD ["node", "--import", "tsx", "src/index.ts"]
+# --experimental-sqlite: node:sqlite needs the flag on Node 22.x (22.5+);
+# it stays accepted (no-op) on 23.4+/24+ where the builtin is stable.
+CMD ["node", "--import", "tsx", "--experimental-sqlite", "src/index.ts"]

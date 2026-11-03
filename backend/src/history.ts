@@ -1,10 +1,7 @@
-import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { db, rowsSince } from "./store"
 
 export type HistoryWindow = "1h" | "6h" | "24h" | "7d"
 
-const DATA_DIR = process.env.DATA_DIR ?? join(process.cwd(), "data")
-const PREFIX = "hist-"
 const SAMPLE_SEC = 15 // recorder interval — converts rate samples into totals
 
 const WINDOW_MS: Record<HistoryWindow, number> = {
@@ -38,43 +35,18 @@ export interface HistoryPoint {
   temp: number | null
 }
 
-function dayKey(ms: number): string {
-  const d = new Date(ms)
-  const p = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
-
-/** Yields all recorded points with t >= fromMs, oldest first. */
-function* readRange(fromMs: number): Generator<HistoryPoint> {
-  let files: string[] = []
-  try {
-    files = readdirSync(DATA_DIR)
-      .filter((f) => f.startsWith(PREFIX))
-      .sort()
-  } catch {
-    return // no data directory yet
-  }
-  // Include the previous day's file too — day keys are local, parsing is UTC.
-  const from = dayKey(fromMs - 86_400_000)
-  for (const f of files) {
-    if (f.slice(PREFIX.length) < from) continue
-    let text: string
-    try {
-      text = readFileSync(join(DATA_DIR, f), "utf8")
-    } catch {
-      continue
-    }
-    for (const line of text.split("\n")) {
-      if (!line) continue
-      try {
-        const p = JSON.parse(line) as HistoryPoint
-        if (typeof p.t === "number" && p.t >= fromMs) yield p
-      } catch {
-        /* skip corrupt line */
-      }
-    }
-  }
-}
+// SQL bucket averages ignore NULLs — the same "skip null, average the rest"
+// behaviour as the previous JSONL reader. The bucket expression truncates
+// toward zero via CAST, which equals floor for t >= from.
+const bucketAvgStmt = db.prepare(`
+  SELECT CAST((t - ?1) / ?2 AS INTEGER) AS bucket,
+         AVG(cpu) AS cpu, AVG(mem) AS mem, AVG(disk) AS disk,
+         AVG(rx) AS rx, AVG(tx) AS tx,
+         AVG(load) AS load, AVG(tcp) AS tcp, AVG(temp) AS temp
+  FROM samples
+  WHERE t >= ?1
+  GROUP BY bucket
+`)
 
 /** Downsampled time series for the area chart. */
 export function querySeries(window: HistoryWindow) {
@@ -83,27 +55,21 @@ export function querySeries(window: HistoryWindow) {
   const to = Date.now()
   const from = to - span
   const buckets = Math.ceil(span / step)
-  const acc = Array.from({ length: buckets }, () => {
-    const a = {} as Record<Key, { s: number; n: number }>
-    for (const k of KEYS) a[k] = { s: 0, n: 0 }
-    return a
-  })
 
-  for (const p of readRange(from)) {
-    const i = Math.min(buckets - 1, Math.max(0, Math.floor((p.t - from) / step)))
-    const a = acc[i]
-    for (const k of KEYS) {
-      const v = p[k]
-      if (v != null) {
-        a[k].s += v
-        a[k].n++
-      }
-    }
+  const byBucket = new Map<number, Record<Key, number | null>>()
+  for (const row of bucketAvgStmt.all(from, step) as unknown as Array<{ bucket: number } & Record<Key, number | null>>) {
+    byBucket.set(Number(row.bucket), {
+      cpu: row.cpu, mem: row.mem, disk: row.disk, rx: row.rx,
+      tx: row.tx, load: row.load, tcp: row.tcp, temp: row.temp,
+    })
   }
 
-  const points = acc.map((a, i) => {
+  // Scaffold every bucket so empty ones come out null and points[i].t is
+  // from + i*step — identical to the pre-SQLite output shape.
+  const points = Array.from({ length: buckets }, (_, i) => {
     const point: Record<string, number | null> = { t: from + i * step }
-    for (const k of KEYS) point[k] = a[k].n > 0 ? a[k].s / a[k].n : null
+    const a = byBucket.get(i)
+    for (const k of KEYS) point[k] = a && a[k] != null ? Number(a[k]) : null
     return point as unknown as HistoryPoint
   })
 
@@ -122,8 +88,7 @@ function dayStartOf(ms: number): number {
 /** Last 7 calendar days: per-day traffic totals + 7×24 hourly heatmap cells. */
 export function queryAggregate() {
   const todayStart = dayStartOf(Date.now())
-  const to = todayStart + DAY_MS // all of today
-  const from = to - 7 * DAY_MS
+  const from = todayStart + DAY_MS - 7 * DAY_MS
 
   const weekly = Array.from({ length: 7 }, () => ({
     rx: 0,
@@ -135,7 +100,9 @@ export function queryAggregate() {
   }))
   const heat = Array.from({ length: 7 * 24 }, () => ({ s: 0, n: 0 }))
 
-  for (const p of readRange(from)) {
+  // Calendar-day grouping stays in JS on purpose: day boundaries follow the
+  // container TZ, which SQLite has no notion of. 7d ≈ 40k rows, <10ms.
+  for (const p of rowsSince(from)) {
     const idx = 6 - Math.round((todayStart - dayStartOf(p.t)) / DAY_MS)
     if (idx < 0 || idx > 6) continue
     const w = weekly[idx]
