@@ -1,5 +1,5 @@
 import { getSnapshot } from "./metrics"
-import { checkpoint, deleteSamplesBefore, insertSample } from "./store"
+import { checkpoint, deleteProbesBefore, deleteSamplesBefore, insertSample } from "./store"
 
 const SAMPLE_MS = 15_000
 const RETENTION_DAYS = 30
@@ -36,7 +36,9 @@ function record(): void {
 
 function prune(): void {
   try {
-    deleteSamplesBefore(Date.now() - RETENTION_DAYS * 86_400_000)
+    const cutoff = Date.now() - RETENTION_DAYS * 86_400_000
+    deleteSamplesBefore(cutoff)
+    deleteProbesBefore(cutoff)
     // Keep the WAL tiny so file-copy backups of DATA_DIR stay consistent.
     checkpoint()
   } catch {

@@ -12,6 +12,7 @@ import {
   listContainers,
 } from "./docker"
 import { queryAggregate, querySeries, type HistoryWindow } from "./history"
+import { queryUptime, type UptimeWindow } from "./uptime"
 import { getSnapshot, startSampler } from "./metrics"
 import { probeAll } from "./probe"
 import { startRecorder } from "./recorder"
@@ -98,6 +99,14 @@ app.get("/api/history", (c) => {
   const w = c.req.query("window") as HistoryWindow
   if (!HISTORY_WINDOWS.has(w)) return c.json({ error: "invalid window" }, 400)
   return c.json(querySeries(w))
+})
+
+const UPTIME_WINDOWS = new Set<UptimeWindow>(["24h", "7d"])
+
+app.get("/api/uptime", (c) => {
+  const w = c.req.query("window") as UptimeWindow
+  if (!UPTIME_WINDOWS.has(w)) return c.json({ error: "invalid window" }, 400)
+  return c.json(queryUptime(w))
 })
 
 app.get("/api/history/aggregate", (c) => c.json(queryAggregate()))

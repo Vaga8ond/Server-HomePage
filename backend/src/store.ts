@@ -53,6 +53,17 @@ db.exec(`
 db.exec("CREATE INDEX IF NOT EXISTS idx_samples_t ON samples(t)")
 db.exec("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
 
+// Service probe history (uptime bars). One row per real probe of a service.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS probes (
+    t         INTEGER NOT NULL,        -- epoch ms
+    name      TEXT NOT NULL,           -- service name (catalog key)
+    status    TEXT NOT NULL,           -- running | stopped | error
+    latencyMs INTEGER                  -- null when service did not answer
+  )
+`)
+db.exec("CREATE INDEX IF NOT EXISTS idx_probes_name_t ON probes(name, t)")
+
 const insertStmt = db.prepare(
   `INSERT INTO samples (t, cpu, mem, disk, rx, tx, load, tcp, temp)
    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -60,6 +71,10 @@ const insertStmt = db.prepare(
 const countStmt = db.prepare("SELECT COUNT(*) AS n FROM samples")
 const deleteBeforeStmt = db.prepare("DELETE FROM samples WHERE t < ?")
 const rowsSinceStmt = db.prepare("SELECT * FROM samples WHERE t >= ? ORDER BY t")
+const insertProbeStmt = db.prepare(
+  "INSERT INTO probes (t, name, status, latencyMs) VALUES (?, ?, ?, ?)",
+)
+const deleteProbesBeforeStmt = db.prepare("DELETE FROM probes WHERE t < ?")
 
 export function insertSample(r: SampleRow): void {
   insertStmt.run(r.t, r.cpu, r.mem, r.disk, r.rx, r.tx, r.load, r.tcp, r.temp)
@@ -80,4 +95,17 @@ export function checkpoint(): void {
 /** All recorded samples with t >= fromMs, oldest first. */
 export function rowsSince(fromMs: number): SampleRow[] {
   return rowsSinceStmt.all(fromMs) as unknown as SampleRow[]
+}
+
+export function insertProbe(
+  t: number,
+  name: string,
+  status: string,
+  latencyMs: number | null,
+): void {
+  insertProbeStmt.run(t, name, status, latencyMs)
+}
+
+export function deleteProbesBefore(cutoffMs: number): void {
+  deleteProbesBeforeStmt.run(cutoffMs)
 }

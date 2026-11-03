@@ -7,6 +7,7 @@ import type {
   ServiceStatusResult,
 } from "./types"
 import { probeUrl } from "./config"
+import { insertProbe } from "./store"
 
 const CACHE_MS = 5000
 const TIMEOUT_MS = 3000
@@ -54,10 +55,31 @@ function probe(url: string): Promise<{
   })
 }
 
+let lastWarn = 0
+
+/** Best-effort history write of fresh probe results (uptime bars).
+ *  probe:false entries have no HTTP surface — their status is derived from
+ *  the container state elsewhere, so they never enter probe history. */
+function recordProbes(results: ServiceStatusResult[], t: number): void {
+  try {
+    for (const r of results) {
+      if (r.probe === false) continue
+      insertProbe(t, r.name, r.status, r.latencyMs)
+    }
+  } catch {
+    // Best-effort: warn at most once a minute and keep serving live status.
+    if (Date.now() - lastWarn > 60_000) {
+      lastWarn = Date.now()
+      console.warn("probe: cannot record history")
+    }
+  }
+}
+
 export async function probeAll(
   services: ServiceConfig[],
 ): Promise<ServiceStatusResult[]> {
   if (cache && Date.now() - cache.ts < CACHE_MS) return cache.data
+  const t = Date.now()
   const results = await Promise.all(
     services.map(async (service) => {
       if (service.probe === false) {
@@ -67,7 +89,7 @@ export async function probeAll(
           ...service,
           status: "running" as ServiceStatus,
           latencyMs: null,
-          checkedAt: Date.now(),
+          checkedAt: t,
         }
       }
       const result = await probe(probeUrl(service))
@@ -75,10 +97,11 @@ export async function probeAll(
         ...service,
         status: result.status,
         latencyMs: result.latencyMs,
-        checkedAt: Date.now(),
+        checkedAt: t,
       }
     }),
   )
-  cache = { ts: Date.now(), data: results }
+  cache = { ts: t, data: results }
+  recordProbes(results, t)
   return results
 }
