@@ -64,12 +64,12 @@ export interface HistoryPoint {
 // behaviour as the previous JSONL reader. The bucket expression truncates
 // toward zero via CAST, which equals floor for t >= from.
 const bucketAvgStmt = db.prepare(`
-  SELECT CAST((t - ?1) / ?2 AS INTEGER) AS bucket,
+  SELECT CAST((t - ?) / ? AS INTEGER) AS bucket,
          AVG(cpu) AS cpu, AVG(mem) AS mem, AVG(disk) AS disk,
          AVG(rx) AS rx, AVG(tx) AS tx,
          AVG(load) AS load, AVG(tcp) AS tcp, AVG(temp) AS temp
   FROM samples
-  WHERE t >= ?1
+  WHERE t >= ?
   GROUP BY bucket
 `)
 
@@ -91,7 +91,7 @@ export function querySeries(window: SeriesWindow, custom?: { from: number; to: n
   const buckets = Math.ceil((to - from) / step)
 
   const byBucket = new Map<number, Record<Key, number | null>>()
-  for (const row of bucketAvgStmt.all(from, step) as unknown as Array<{ bucket: number } & Record<Key, number | null>>) {
+  for (const row of bucketAvgStmt.all(from, step, from) as unknown as Array<{ bucket: number } & Record<Key, number | null>>) {
     byBucket.set(Number(row.bucket), {
       cpu: row.cpu, mem: row.mem, disk: row.disk, rx: row.rx,
       tx: row.tx, load: row.load, tcp: row.tcp, temp: row.temp,
