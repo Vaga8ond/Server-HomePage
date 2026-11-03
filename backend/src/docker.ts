@@ -264,7 +264,7 @@ export async function streamMergedLogs(
   return () => cancels.forEach((c) => c())
 }
 
-const STREAM_TYPE = (t: number): "stdout" | "stderr" => (t === 1 ? "stderr" : "stdout")
+const STREAM_TYPE = (t: number): "stdout" | "stderr" => (t === 2 ? "stderr" : "stdout")
 
 /**
  * Follow a container's log stream (SSE source). Calls `onLine` with each
