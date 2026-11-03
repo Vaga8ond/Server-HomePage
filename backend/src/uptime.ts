@@ -33,12 +33,12 @@ export interface ServiceUptime {
 // which is exactly the "did not answer" rows.
 const bucketStmt = db.prepare(`
   SELECT name,
-         CAST((t - ?1) / ?2 AS INTEGER) AS bucket,
+         CAST((t - ?) / ? AS INTEGER) AS bucket,
          SUM(status = 'running') AS up,
          COUNT(*) AS n,
          AVG(latencyMs) AS latency
   FROM probes
-  WHERE t >= ?1
+  WHERE t >= ?
   GROUP BY name, bucket
   ORDER BY name
 `)
@@ -52,7 +52,7 @@ export function queryUptime(window: UptimeWindow) {
   const from = to - span
 
   const seen = new Map<string, { up: number; n: number; byCell: Map<number, { up: number; n: number; latency: number | null }> }>()
-  for (const row of bucketStmt.all(from, step) as unknown as Array<{
+  for (const row of bucketStmt.all(from, step, from) as unknown as Array<{
     name: string
     bucket: number
     up: number
