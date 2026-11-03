@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import {
   Area,
   AreaChart,
@@ -9,28 +10,58 @@ import {
 } from "recharts"
 
 import { ChartTooltip, chartColors } from "@/components/dashboard/charts/chart-tooltip"
-import type { HistoryPoint, HistoryWindow } from "@/lib/api"
+import type { HistoryPoint, SeriesWindow } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 
-const WINDOW_OPTIONS: { id: HistoryWindow; label: string }[] = [
+const WINDOW_OPTIONS: { id: SeriesWindow; label: string }[] = [
   { id: "1h", label: "1H" },
   { id: "6h", label: "6H" },
   { id: "24h", label: "24H" },
   { id: "7d", label: "7D" },
+  { id: "custom", label: "自定义" },
 ]
+
+/** datetime-local input value (local wall clock) from epoch ms. */
+function localInputValue(ms: number): string {
+  const d = new Date(ms)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 export function NetworkAreaChart({
   points,
   window,
+  range,
   onWindow,
+  onRange,
   loading,
 }: {
   points: HistoryPoint[]
-  window: HistoryWindow
-  onWindow: (w: HistoryWindow) => void
+  window: SeriesWindow
+  /** Active custom range (epoch ms) — undefined until first 应用. */
+  range?: { from: number; to: number }
+  onWindow: (w: SeriesWindow) => void
+  onRange?: (from: number, to: number) => void
   loading: boolean
 }) {
   const c = chartColors()
+
+  // Custom-range editor: prefilled from the active range (or last 24h),
+  // applied on button — typing alone never triggers a refetch storm.
+  const [fromInput, setFromInput] = useState("")
+  const [toInput, setToInput] = useState("")
+  useEffect(() => {
+    if (window !== "custom") return
+    const base = range ?? { from: Date.now() - 86_400_000, to: Date.now() }
+    setFromInput(localInputValue(base.from))
+    setToInput(localInputValue(base.to))
+  }, [window, range])
+
+  function applyRange() {
+    const from = fromInput ? new Date(fromInput).getTime() : NaN
+    const to = toInput ? new Date(toInput).getTime() : NaN
+    if (Number.isFinite(from) && Number.isFinite(to) && from < to) onRange?.(from, to)
+  }
   const data = points.map((p) => ({
     t: p.t,
     rx: p.rx != null ? p.rx / 1e6 : null,
@@ -41,9 +72,11 @@ export function NetworkAreaChart({
     const d = new Date(t)
     const hh = String(d.getHours()).padStart(2, "0")
     const mm = String(d.getMinutes()).padStart(2, "0")
-    return window === "7d"
-      ? `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hh}:00`
-      : `${hh}:${mm}`
+    return window === "custom"
+      ? `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}`
+      : window === "7d"
+        ? `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()]} ${hh}:00`
+        : `${hh}:${mm}`
   }
 
   return (
@@ -75,6 +108,33 @@ export function NetworkAreaChart({
           ))}
         </div>
       </div>
+
+      {window === "custom" && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <input
+            type="datetime-local"
+            value={fromInput}
+            onChange={(e) => setFromInput(e.target.value)}
+            className="mono rounded-lg border border-line bg-ink/[0.03] px-2 py-1 text-[11px] text-ink-soft"
+            style={{ colorScheme: "dark" }}
+          />
+          <span className="mono text-[11px] text-ink-faint">→</span>
+          <input
+            type="datetime-local"
+            value={toInput}
+            onChange={(e) => setToInput(e.target.value)}
+            className="mono rounded-lg border border-line bg-ink/[0.03] px-2 py-1 text-[11px] text-ink-soft"
+            style={{ colorScheme: "dark" }}
+          />
+          <button
+            type="button"
+            onClick={applyRange}
+            className="mono rounded-lg bg-ink/[0.06] px-2.5 py-1 text-[11px] font-medium text-ink-soft transition-colors hover:bg-ink/10 hover:text-ink"
+          >
+            应用
+          </button>
+        </div>
+      )}
 
       <div className="h-[218px]">
         {empty ? (

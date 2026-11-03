@@ -36,6 +36,7 @@ export function chartColors() {
     cyan: dark ? "#00e5ff" : "#0891b2",
     violet: dark ? "#a855f7" : "#7c3aed",
     green: dark ? "#22c55e" : "#16a34a",
+    orange: dark ? "#f59e0b" : "#d97706",
     grid: dark ? "rgba(255,255,255,0.07)" : "rgba(10,12,30,0.07)",
     tick: dark ? "rgba(255,255,255,0.3)" : "rgba(10,12,30,0.32)",
   }

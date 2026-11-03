@@ -4,15 +4,18 @@ import { MorphIcon } from "morphicons/react"
 
 import { ContainerControls } from "@/components/dashboard/container-controls"
 import { StatusBadge } from "@/components/dashboard/status-badge"
+import { UptimeBar } from "@/components/dashboard/uptime-bar"
 import { getServiceIcon } from "@/lib/icons"
 import { resolveServiceUrl } from "@/lib/service-url"
-import type { ApiService } from "@/lib/api"
+import type { ApiService, ServiceUptime } from "@/lib/api"
 
 export function ServiceCard({
   service,
+  uptime,
   onControl,
 }: {
   service: ApiService
+  uptime?: ServiceUptime
   onControl?: () => void
 }) {
   const Icon = getServiceIcon(service.iconKey)
@@ -58,6 +61,18 @@ export function ServiceCard({
           </div>
         </div>
       </a>
+
+      {uptime && (
+        <div className="mb-3.5">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="mono text-[11px] text-ink-faint">availability</span>
+            <span className="mono text-[11px] font-medium text-ink-soft">
+              {uptime.uptimePct != null ? `${uptime.uptimePct.toFixed(1)}%` : "—"}
+            </span>
+          </div>
+          <UptimeBar uptime={uptime} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-ink-soft">

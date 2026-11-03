@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react"
+import { useEffect, useState, type CSSProperties } from "react"
 import { HardDrive, Radio, Wifi } from "lucide"
 import { MorphIcon } from "morphicons/react"
 
@@ -14,7 +14,7 @@ import {
   fetchServices,
   type ApiService,
   type HistorySeries,
-  type HistoryWindow,
+  type SeriesWindow,
   type HostMetrics,
   type NetInterface,
 } from "@/lib/api"
@@ -25,8 +25,18 @@ export function NetworkView() {
   const { data: host } = usePoll<HostMetrics>(fetchHost, 5000)
   const { data: net } = usePoll(fetchNetwork, 15_000)
   const { data: services } = usePoll<ApiService[]>(fetchServices, 10_000)
-  const [win, setWin] = useState<HistoryWindow>("24h")
-  const { data: hist, loading } = usePoll<HistorySeries>(() => fetchHistory(win), 60_000)
+  const [win, setWin] = useState<SeriesWindow>("24h")
+  const [range, setRange] = useState<{ from: number; to: number } | null>(null)
+  const { data: hist, loading, refetch } = usePoll<HistorySeries>(
+    () =>
+      win === "custom"
+        ? fetchHistory("custom", range ?? { from: Date.now() - 86_400_000, to: Date.now() })
+        : fetchHistory(win),
+    60_000,
+  )
+  useEffect(() => {
+    refetch() // window/range switch → immediate refetch
+  }, [win, range, refetch])
 
   const ifaces = net?.interfaces ?? []
   const rx = host?.network?.rxBytesPerSec
@@ -71,7 +81,12 @@ export function NetworkView() {
         <NetworkAreaChart
           points={hist?.points ?? []}
           window={win}
-          onWindow={setWin}
+          range={range ?? undefined}
+          onWindow={(w) => {
+            setWin(w)
+            if (w !== "custom") setRange(null)
+          }}
+          onRange={(from, to) => setRange({ from, to })}
           loading={loading}
         />
       </div>
