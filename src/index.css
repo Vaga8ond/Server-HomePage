@@ -309,6 +309,27 @@
     transform: translateY(-2px);
     box-shadow: var(--glass-shadow), 0 0 30px var(--svc, transparent);
   }
+
+  /* Skeleton shimmer blocks — loading placeholders (skeleton.tsx) */
+  .sk {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+    border-radius: 6px;
+  }
+  .sk::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--bg-surface) 65%, transparent),
+      transparent
+    );
+    animation: sk-shimmer 1.4s ease-in-out infinite;
+  }
 }
 
 @keyframes pulse-dot {
@@ -318,6 +339,18 @@
   }
   50% {
     opacity: 0.4;
+  }
+}
+
+@keyframes sk-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk::after {
+    animation: none;
   }
 }
 

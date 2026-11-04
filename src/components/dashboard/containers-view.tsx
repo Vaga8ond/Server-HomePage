@@ -5,6 +5,11 @@ import { MorphIcon } from "morphicons/react"
 
 import { ContainerControls } from "@/components/dashboard/container-controls"
 import { PageHeader } from "@/components/dashboard/page-header"
+import {
+  SkeletonCard,
+  StaggerGrid,
+  StaggerItem,
+} from "@/components/dashboard/skeleton"
 import { StatusBadge } from "@/components/dashboard/status-badge"
 import { fetchContainerLogs, fetchContainers, type ContainerInfo } from "@/lib/api"
 import { containerColor, getServiceIcon, imageToIconKey } from "@/lib/icons"
@@ -43,11 +48,15 @@ export function ContainersView() {
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
         {loading && list.length === 0 ? (
-          <span className="mono text-xs text-ink-faint">loading…</span>
+          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
-          list.map((c) => (
-            <ContainerCard key={c.id} c={c} refetch={refetch} onLogs={openLogs} />
-          ))
+          <StaggerGrid className="contents">
+            {list.map((c) => (
+              <StaggerItem key={c.id} className="grid">
+                <ContainerCard c={c} refetch={refetch} onLogs={openLogs} />
+              </StaggerItem>
+            ))}
+          </StaggerGrid>
         )}
       </div>
 

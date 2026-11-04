@@ -49,6 +49,7 @@ import {
 import { diskPct } from "@/lib/health"
 import { usePoll } from "@/lib/use-poll"
 import { formatDuration, formatNumber } from "@/lib/format"
+import { Sk, SkeletonKpi, SkeletonPanel } from "@/components/dashboard/skeleton"
 
 export function OverviewView() {
   const { data: host, error: hostErr, lastOk } = usePoll<HostMetrics>(fetchHost, 5000)
@@ -117,6 +118,39 @@ export function OverviewView() {
   }, [win, range, refetchHist])
 
   const cc = chartColors()
+  const booting = !host && !hostErr
+
+  // First-load skeleton: mirrors health strip / KPI row / metric charts so the
+  // page keeps its shape while fetchHost resolves, then swaps for real data.
+  if (booting) {
+    return (
+      <>
+        <PageHeader title="Overview" subtitle={sub}>
+          <FreshnessChip lastOk={lastOk} error={hostErr} intervalMs={5000} />
+        </PageHeader>
+        <div className="glass-card mb-7 px-5 py-3.5">
+          <Sk className="h-3.5 w-2/3 rounded" />
+        </div>
+        <div className="mb-7 flex flex-wrap gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <SkeletonKpi key={i} />
+          ))}
+        </div>
+        <div className="mb-8">
+          <SectionTitle>Metrics</SectionTitle>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
+            <SkeletonPanel />
+            <SkeletonPanel />
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <SkeletonPanel />
+            <SkeletonPanel />
+          </div>
+        </div>
+      </>
+    )
+  }
+
   const kpis = [
     {
       label: "Network I/O",

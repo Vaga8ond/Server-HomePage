@@ -3,6 +3,7 @@ import { Radio, RefreshCw, Search } from "lucide"
 import { MorphIcon } from "morphicons/react"
 
 import { PageHeader } from "@/components/dashboard/page-header"
+import { SkeletonLogRows } from "@/components/dashboard/skeleton"
 import { StatCard } from "@/components/dashboard/stat-card"
 import {
   fetchComposeProjects,
@@ -518,7 +519,7 @@ export function LogsView() {
 
         <div ref={scrollRef} onScroll={onScroll} className="relative max-h-[440px] overflow-y-auto">
           {busy && lines == null ? (
-            <div className="px-[18px] py-8 text-center text-xs text-ink-faint">loading…</div>
+            <SkeletonLogRows rows={10} />
           ) : filtered.length === 0 ? (
             <div className="px-[18px] py-8 text-center text-xs text-ink-faint">
               {parsed.length === 0 ? "(no output)" : "no matching entries"}

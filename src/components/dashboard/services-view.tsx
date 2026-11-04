@@ -3,6 +3,11 @@ import { useMemo, useState } from "react"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { ServiceCard } from "@/components/dashboard/service-card"
 import {
+  SkeletonCard,
+  StaggerGrid,
+  StaggerItem,
+} from "@/components/dashboard/skeleton"
+import {
   fetchUptime,
   type ApiService,
   type UptimeWindow,
@@ -72,34 +77,26 @@ export function ServicesView({
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
-        {showSkeleton
-          ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
-          : services.map((service) => (
+      {showSkeleton ? (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : (
+        <StaggerGrid className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+          {services.map((service) => (
+            <StaggerItem key={service.id} className="grid">
               <ServiceCard
                 key={service.id}
                 service={service}
                 uptime={uptimeByName.get(service.name)}
                 onControl={onControl}
               />
-            ))}
-      </div>
+            </StaggerItem>
+          ))}
+        </StaggerGrid>
+      )}
     </>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div className="glass-card svc-card p-5">
-      <div className="mb-3.5 flex items-start justify-between">
-        <div className="size-[42px] animate-pulse rounded-xl bg-ink/10" />
-        <div className="h-5 w-16 animate-pulse rounded-full bg-ink/10" />
-      </div>
-      <div className="mb-4">
-        <div className="mb-2 h-4 w-2/3 animate-pulse rounded bg-ink/10" />
-        <div className="h-3 w-1/2 animate-pulse rounded bg-ink/10" />
-      </div>
-      <div className="h-3 w-1/3 animate-pulse rounded bg-ink/10" />
-    </div>
   )
 }
