@@ -23,7 +23,7 @@ import {
 } from "./history"
 import { queryUptime, type UptimeWindow } from "./uptime"
 import { getSnapshot, startSampler } from "./metrics"
-import { probeAll } from "./probe"
+import { probeAll, startProber } from "./probe"
 import { startRecorder } from "./recorder"
 import { defaultInterface, listInterfaces } from "./network"
 import { pollDevices } from "./devices"
@@ -32,6 +32,7 @@ import type { ContainerAction } from "./types"
 
 startSampler()
 startRecorder()
+startProber()
 startDockerEvents()
 
 export const app = new Hono()

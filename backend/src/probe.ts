@@ -6,6 +6,8 @@ import type {
   ServiceStatus,
   ServiceStatusResult,
 } from "./types"
+import { readServices } from "./config"
+import { discoverServices } from "./docker"
 import { probeUrl } from "./config"
 import { insertProbe } from "./store"
 
@@ -104,4 +106,35 @@ export async function probeAll(
   cache = { ts: t, data: results }
   recordProbes(results, t)
   return results
+}
+
+let proberStarted = false
+let proberLastWarn = 0
+
+/** Full service catalog, same assembly as GET /api/services. */
+async function currentCatalog(): Promise<ServiceConfig[]> {
+  const manual = readServices()
+  return [...manual, ...(await discoverServices(manual))]
+}
+
+/** Background prober: probe the whole catalog every interval and record
+ *  history, regardless of whether anyone is watching the dashboard. Without
+ *  this, uptime bars only fill while a browser holds /api/services open —
+ *  overnight gaps read as "unmonitored" instead of "up". Best-effort: a
+ *  failed round warns (throttled) and tries again next tick. */
+export function startProber(intervalMs = 60_000): void {
+  if (proberStarted) return
+  proberStarted = true
+  const tick = async () => {
+    try {
+      await probeAll(await currentCatalog())
+    } catch {
+      if (Date.now() - proberLastWarn > 60_000) {
+        proberLastWarn = Date.now()
+        console.warn("prober: round failed, retrying next interval")
+      }
+    }
+  }
+  void tick()
+  setInterval(tick, intervalMs).unref?.()
 }
