@@ -6,6 +6,7 @@ import { MorphIcon } from "morphicons/react"
 import { ContainerControls } from "@/components/dashboard/container-controls"
 import { PageHeader } from "@/components/dashboard/page-header"
 import {
+  Sk,
   SkeletonCard,
   StaggerGrid,
   StaggerItem,
@@ -43,12 +44,18 @@ export function ContainersView() {
     <>
       <PageHeader
         title="Monitoring"
-        subtitle={`${list.length} containers · ${running} running · ${stopped} stopped`}
+        subtitle={
+          loading && list.length === 0 ? (
+            <Sk className="h-[19px] w-44 rounded" />
+          ) : (
+            `${list.length} containers · ${running} running · ${stopped} stopped`
+          )
+        }
       />
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-4">
         {loading && list.length === 0 ? (
-          Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+          Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <StaggerGrid className="contents">
             {list.map((c) => (

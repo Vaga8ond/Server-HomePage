@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { PageHeader } from "@/components/dashboard/page-header"
 import { ServiceCard } from "@/components/dashboard/service-card"
 import {
+  Sk,
   SkeletonCard,
   StaggerGrid,
   StaggerItem,
@@ -46,9 +47,11 @@ export function ServicesView({
       <PageHeader
         title="Services"
         subtitle={
-          showSkeleton
-            ? "loading…"
-            : `${services.length} services · ${running} running · ${stopped} stopped · ${error} error`
+          showSkeleton ? (
+            <Sk className="h-[19px] w-52 rounded" />
+          ) : (
+            `${services.length} services · ${running} running · ${stopped} stopped · ${error} error`
+          )
         }
       />
 

@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2 } from "lucide"
+import { AlertTriangle, CheckCircle2, Loader2 } from "lucide"
 import { MorphIcon } from "morphicons/react"
 
 import {
@@ -42,20 +42,27 @@ export function HealthStrip({ host }: { host: Parameters<typeof computeHealth>[0
     host,
   })
 
-  const Icon = ok ? CheckCircle2 : AlertTriangle
+  // Sources still loading → neutral "checking" band instead of a premature
+  // green "All systems normal" that flips red once real data lands.
+  const pending = containers == null || services == null
+
   return (
     <div
       className={`glass-card mb-7 flex flex-wrap items-center gap-2 px-[18px] py-3 ${
-        ok ? "" : "border-red-glow/25"
+        !pending && !ok ? "border-red-glow/25" : ""
       }`}
     >
       <span
         className={`flex items-center gap-2 text-xs font-semibold ${
-          ok ? "text-green-glow" : "text-red-glow"
+          pending ? "text-ink-faint" : ok ? "text-green-glow" : "text-red-glow"
         }`}
       >
-        <MorphIcon icon={Icon} size={14} />
-        {ok ? "All systems normal" : "Needs attention"}
+        {pending ? (
+          <MorphIcon icon={Loader2} size={14} className="animate-spin" />
+        ) : (
+          <MorphIcon icon={ok ? CheckCircle2 : AlertTriangle} size={14} />
+        )}
+        {pending ? "checking systems…" : ok ? "All systems normal" : "Needs attention"}
       </span>
       <div className="ml-auto flex flex-wrap gap-1.5">
         {signals.map((s) => (

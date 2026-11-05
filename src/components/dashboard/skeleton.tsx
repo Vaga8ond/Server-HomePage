@@ -9,19 +9,36 @@ export function Sk({ className = "" }: { className?: string }) {
 }
 
 /** Card skeleton matching the ServiceCard/ContainerCard glass-card form:
- *  42px icon chip + status pill / two text lines / footer line. */
+ *  42px icon chip + status pill / two text lines / metric bar zone /
+ *  footer (status text + action buttons) — sized so real cards (~230px)
+ *  replace it without a row jump. */
 export function SkeletonCard() {
   return (
-    <div className="glass-card svc-card p-5">
+    <div className="glass-card svc-card min-h-[232px] p-5">
       <div className="mb-3.5 flex items-start justify-between">
         <Sk className="size-[42px] rounded-xl" />
         <Sk className="h-5 w-16 rounded-full" />
       </div>
       <div className="mb-4">
-        <Sk className="mb-2 h-4 w-2/3 rounded" />
+        <Sk className="mb-1 h-4 w-2/3 rounded" />
         <Sk className="h-3 w-1/2 rounded" />
       </div>
-      <Sk className="h-3 w-1/3 rounded" />
+      {/* metric zone — approximates ServiceCard availability bar and
+       *  ContainerCard CPU/MEM mini gauges alike */}
+      <div className="mb-3.5">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <Sk className="h-2.5 w-16 rounded" />
+          <Sk className="h-2.5 w-8 rounded" />
+        </div>
+        <Sk className="h-2 w-full rounded-full" />
+      </div>
+      <div className="flex items-center justify-between">
+        <Sk className="h-3 w-10 rounded" />
+        <div className="flex gap-2">
+          <Sk className="h-[26px] w-16 rounded-lg" />
+          <Sk className="h-[26px] w-14 rounded-lg" />
+        </div>
+      </div>
     </div>
   )
 }
@@ -29,7 +46,7 @@ export function SkeletonCard() {
 /** KPI skeleton matching KpiCard: label / sparkline / big value row. */
 export function SkeletonKpi() {
   return (
-    <div className="glass-card flex flex-1 flex-col p-[22px]">
+    <div className="glass-card flex min-h-[154px] flex-1 flex-col p-[22px]">
       <Sk className="mb-2.5 h-3 w-24 rounded" />
       <Sk className="mb-3 h-9 w-full rounded" />
       <div className="mt-auto flex items-baseline gap-1.5">
@@ -40,13 +57,14 @@ export function SkeletonKpi() {
   )
 }
 
-/** Wide panel skeleton matching the glass metric charts (title + plot area). */
+/** Wide panel skeleton matching the glass metric charts (title + plot area
+ *  ~230px, the loaded chart plot height, so the swap doesn't reflow). */
 export function SkeletonPanel({ className = "" }: { className?: string }) {
   return (
     <div className={`glass-card px-[22px] pb-4 pt-[22px] ${className}`}>
       <Sk className="mb-1.5 h-4 w-28 rounded" />
       <Sk className="mb-4 h-3 w-20 rounded" />
-      <Sk className="h-[150px] w-full rounded-lg" />
+      <Sk className="h-[230px] w-full rounded-lg" />
     </div>
   )
 }
@@ -59,11 +77,11 @@ export function SkeletonLogRows({ rows = 10 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="grid grid-cols-[86px_52px_1fr] items-center gap-2 py-2.5"
+          className="grid grid-cols-[86px_52px_1fr] items-center gap-2 py-[10px]"
         >
-          <Sk className="h-3 w-[70px]" />
-          <Sk className="h-3 w-9" />
-          <Sk className={`h-3 ${widths[i % widths.length]}`} />
+          <Sk className="h-4 w-[70px]" />
+          <Sk className="h-4 w-9" />
+          <Sk className={`h-4 ${widths[i % widths.length]}`} />
         </div>
       ))}
     </div>

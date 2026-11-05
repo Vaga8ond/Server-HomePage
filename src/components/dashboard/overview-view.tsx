@@ -49,7 +49,7 @@ import {
 import { diskPct } from "@/lib/health"
 import { usePoll } from "@/lib/use-poll"
 import { formatDuration, formatNumber } from "@/lib/format"
-import { Sk, SkeletonKpi, SkeletonPanel } from "@/components/dashboard/skeleton"
+import { SkeletonKpi, SkeletonPanel } from "@/components/dashboard/skeleton"
 
 export function OverviewView() {
   const { data: host, error: hostErr, lastOk } = usePoll<HostMetrics>(fetchHost, 5000)
@@ -128,9 +128,9 @@ export function OverviewView() {
         <PageHeader title="Overview" subtitle={sub}>
           <FreshnessChip lastOk={lastOk} error={hostErr} intervalMs={5000} />
         </PageHeader>
-        <div className="glass-card mb-7 px-5 py-3.5">
-          <Sk className="h-3.5 w-2/3 rounded" />
-        </div>
+        {/* real strip in its neutral "checking" state — matches the loaded
+         *  page structurally instead of a fake placeholder bar */}
+        <HealthStrip host={null} />
         <div className="mb-7 flex flex-wrap gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <SkeletonKpi key={i} />
@@ -234,40 +234,55 @@ export function OverviewView() {
               <div className="mb-0.5 text-sm font-semibold text-ink">Disk Usage</div>
               <div className="mono text-[11px] text-ink-faint">root filesystem</div>
             </div>
-            <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+            <Suspense fallback={<div className="sk h-[150px] rounded-lg" />}>
               <DiskDonutChart
                 used={host?.disk?.used ?? 0}
                 total={host?.disk?.total ?? 0}
               />
             </Suspense>
           </div>
-          <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
-            <NetworkAreaChart
-              points={hist?.points ?? []}
-              window={win}
-              range={range ?? undefined}
-              onWindow={(w) => {
-                setWin(w)
-                if (w !== "custom") setRange(null)
-              }}
-              onRange={(from, to) => setRange({ from, to })}
-              loading={histLoading}
-            />
-          </Suspense>
+          {/* history not loaded yet → skeleton panel (never an empty real
+           *  chart with bare axes); stale data on refetch stays rendered */}
+          {histLoading && !hist ? (
+            <SkeletonPanel />
+          ) : (
+            <Suspense fallback={<div className="sk h-[150px] rounded-lg" />}>
+              <NetworkAreaChart
+                points={hist?.points ?? []}
+                window={win}
+                range={range ?? undefined}
+                onWindow={(w) => {
+                  setWin(w)
+                  if (w !== "custom") setRange(null)
+                }}
+                onRange={(from, to) => setRange({ from, to })}
+                loading={histLoading}
+              />
+            </Suspense>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
-            <WeeklyBarChart weekly={agg?.weekly ?? []} />
-          </Suspense>
-          <TrafficHeatmap heatmap={agg?.heatmap ?? []} maxMbps={agg?.maxMbps ?? 0} />
+          {!agg ? (
+            <>
+              <SkeletonPanel />
+              <SkeletonPanel />
+            </>
+          ) : (
+            <>
+              <Suspense fallback={<div className="sk h-[150px] rounded-lg" />}>
+                <WeeklyBarChart weekly={agg?.weekly ?? []} />
+              </Suspense>
+              <TrafficHeatmap heatmap={agg?.heatmap ?? []} maxMbps={agg?.maxMbps ?? 0} />
+            </>
+          )}
         </div>
       </div>
 
       {/* Container events timeline */}
       <div className="mb-8">
         <SectionTitle>Container Events</SectionTitle>
-        <Suspense fallback={<div className="h-[150px] animate-pulse rounded-lg bg-ink/5" />}>
+        <Suspense fallback={<div className="sk h-[150px] rounded-lg" />}>
           <EventsTimeline />
         </Suspense>
       </div>

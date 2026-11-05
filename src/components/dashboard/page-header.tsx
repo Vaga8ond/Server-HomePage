@@ -6,7 +6,8 @@ export function PageHeader({
   children,
 }: {
   title: string
-  subtitle: string
+  /** String, or a skeleton placeholder block while the subtitle counts load. */
+  subtitle: ReactNode
   children?: ReactNode
 }) {
   return (
@@ -15,7 +16,7 @@ export function PageHeader({
         <h1 className="mb-1 text-[26px] font-bold tracking-[-0.02em] text-ink">
           {title}
         </h1>
-        <p className="text-[13px] text-ink-soft">{subtitle}</p>
+        <div className="text-[13px] text-ink-soft">{subtitle}</div>
       </div>
       {children}
     </div>
